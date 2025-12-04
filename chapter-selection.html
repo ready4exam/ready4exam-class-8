@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>Select Book, Chapter & Difficulty — Class 8</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme:{
+        extend:{
+          fontFamily:{sans:['Inter','sans-serif']},
+          colors:{'cbse-blue':'#1a3e6a','cbse-light':'#f5f7fa','accent-gold':'#ffb703'}
+        }
+      }
+    }
+  </script>
+
+  <style>
+    .topic-btn{width:100%;padding:1rem;margin-bottom:.75rem;border-radius:.75rem;background:#fff;
+      border:1px solid #d1d5db;cursor:pointer;text-align:left;box-shadow:0 2px 6px rgba(2,6,23,.05);transition:.2s;}
+    .topic-btn:hover{background:#f5f7fa}
+    .topic-btn.selected{border-color:#1a3e6a;background:#eff6ff}
+    .difficulty-btn{padding:.6rem 1.25rem;border-radius:.75rem;font-weight:600;cursor:pointer;transition:.2s;}
+    .difficulty-btn.selected{box-shadow:0 6px 18px rgba(26,62,106,.14);}
+  </style>
+</head>
+
+<body class="bg-cbse-light min-h-screen flex flex-col">
+
+<header class="bg-cbse-blue py-4 shadow-lg">
+  <div class="max-w-6xl mx-auto flex justify-between items-center px-6">
+    <h1 class="text-2xl font-extrabold text-accent-gold">Ready4<span class="text-white">Exam</span></h1>
+    <button onclick="location.href='index.html'" class="text-white underline">← Back</button>
+  </div>
+</header>
+
+<main class="flex-grow max-w-3xl mx-auto px-4 py-8">
+  <h2 id="page-title" class="text-3xl font-extrabold text-cbse-blue mb-6 text-center">Select Book / Chapter</h2>
+  <p id="subject-desc" class="text-center text-gray-600 mb-8"></p>
+
+  <div id="content-container" class="space-y-4 mb-10"></div>
+
+  <div id="difficulty-container" class="hidden mb-10 text-center">
+    <h3 class="text-2xl font-bold text-cbse-blue mb-4">Select Difficulty</h3>
+    <div class="flex flex-wrap justify-center gap-4">
+      <button data-diff="simple"   class="difficulty-btn bg-green-600 text-white">Simple</button>
+      <button data-diff="medium"   class="difficulty-btn bg-yellow-500 text-white">Medium</button>
+      <button data-diff="advanced" class="difficulty-btn bg-red-600 text-white">Advanced</button>
+    </div>
+  </div>
+
+  <p id="error-msg" class="hidden text-center text-red-500 mb-4 font-semibold"></p>
+
+  <div class="text-center">
+    <button id="start-quiz" disabled
+      class="px-8 py-3 bg-cbse-blue text-white rounded-lg font-bold hover:bg-blue-700 transition disabled:opacity-50">
+      Start Quiz
+    </button>
+  </div>
+</main>
+
+<footer class="bg-cbse-blue py-6 text-center text-white">
+  <small>© 2025 Ready4Exam Academic Portal</small>
+</footer>
+
+<script type="module">
+import curriculum from "./js/curriculum.js";
+import { transliterate as tr } from "https://cdn.jsdelivr.net/npm/transliteration/+esm";   // 🔥 Added (Only required change)
+
+// Existing variables remain unchanged
+const CLASS_ID = "8"; // automation replaces 11 or 12
+const subject   = new URLSearchParams(location.search).get("subject") || "";
+
+const content     = document.getElementById("content-container");
+const diffBox     = document.getElementById("difficulty-container");
+const startBtn    = document.getElementById("start-quiz");
+const errorMsg    = document.getElementById("error-msg");
+const subjectDesc = document.getElementById("subject-desc");
+
+let selectedBook=null,selectedChapter=null,selectedDifficulty=null;
+
+/* -----------------------------
+   BOOK → CHAPTER LISTING
+------------------------------*/
+function renderBooks(){
+  const data=curriculum[subject];
+  document.getElementById("page-title").textContent=`Select Book for ${subject}`;
+  subjectDesc.textContent=({
+    Physics:"Explore mechanics, waves & thermodynamics.",
+    Chemistry:"Atom, bonding, organic & inorganic reactions.",
+    Biology:"Cells, genetics, plants, animals & human body.",
+    Mathematics:"Functions, trigonometry, algebra, geometry."
+  }[subject])||"";
+
+  content.innerHTML="";
+  if(!data) return content.innerHTML="<p class='text-center text-gray-600'>No books found.</p>";
+
+  Object.keys(data).forEach(book=>{
+    const btn=document.createElement("button");
+    btn.className="topic-btn";
+    btn.textContent=book;
+    btn.onclick=()=>renderChapters(book);
+    content.appendChild(btn);
+  });
+}
+
+function renderChapters(book){
+  selectedBook=book; content.innerHTML="";
+  const chapters=curriculum[subject][book];
+  document.getElementById("page-title").textContent=`${book} — Chapters`;
+
+  chapters.forEach(ch=>{
+    const t=ch.chapter_title||ch.title||ch;
+    const btn=document.createElement("button");
+    btn.className="topic-btn"; btn.textContent=t;
+    btn.onclick=e=>selectChapter(t,e.currentTarget);
+    content.appendChild(btn);
+  });
+
+  const back=document.createElement("button");
+  back.className="text-cbse-blue underline font-semibold mt-4";
+  back.textContent="← Back"; back.onclick=renderBooks;
+  content.appendChild(back);
+}
+
+/* ----------------------------- */
+function selectChapter(title,el){
+  document.querySelectorAll(".topic-btn").forEach(b=>b.classList.remove("selected"));
+  el.classList.add("selected");
+  selectedChapter=title; diffBox.classList.remove("hidden");
+}
+
+/* Difficulty select */
+document.querySelectorAll(".difficulty-btn").forEach(btn=>{
+  btn.onclick=e=>{
+    document.querySelectorAll(".difficulty-btn").forEach(x=>x.classList.remove("selected"));
+    e.target.classList.add("selected");
+    selectedDifficulty=e.target.dataset.diff;
+    startBtn.disabled=false;
+  };
+});
+
+/* -----------------------------
+   🔥 Updated Table-Builder Logic (Same as Backend)
+------------------------------*/
+function buildTable(ch){
+  let raw = ch || "";
+  let chapter = tr(raw)
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g," ")
+    .replace(/\s+/g," ")
+    .trim();
+
+  const skip=["as","of","the","a","an","in","on","for","to","ki","ke","ka"];
+
+  let words = chapter.split(" ");
+  let filtered = words.filter(w=>!skip.includes(w));
+
+  let first = filtered[0] || words[0] || "ch";
+  let last  = filtered[filtered.length-1] || words[words.length-1] || "x";
+
+  return `${first}_${last}_${CLASS_ID}_quiz`;
+}
+
+/* ----------------------------- */
+startBtn.onclick=()=>{
+  if(!selectedChapter||!selectedDifficulty){
+    errorMsg.textContent="Please select Chapter & Difficulty.";
+    return errorMsg.classList.remove("hidden");
+  }
+
+  location.href=`quiz-engine.html?subject=${subject}&topic=${buildTable(selectedChapter)}&difficulty=${selectedDifficulty}`;
+};
+
+renderBooks();
+</script>
+</body>
+</html>

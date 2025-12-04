@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+
+<title>CBSE Class 8 — Ready4Exam</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Merriweather:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+
+<script>
+tailwind.config = {
+  theme:{
+    extend:{
+      fontFamily:{sans:['Inter'],serif:['Merriweather']},
+      colors:{'cbse-blue':'#133b6a','gold':'#ffbe0b','heading':'#0f172a'},
+      backgroundImage:{
+        'hero-grad':'linear-gradient(135deg, #0f172a 0%, #1e3a8a 50%, #22c55e 100%)'
+      }
+    }
+  }
+}
+</script>
+
+<script src="https://unpkg.com/lucide@latest"></script>
+
+<style>
+body{margin:0;background:#eef3fa;font-family:'Inter',sans-serif;overflow-x:hidden;}
+.subject-card{width:100%;background:white;padding:1.4rem 1rem;border-radius:18px;
+  border:1px solid rgba(0,0,0,.05);box-shadow:0 6px 18px rgba(0,0,0,.07);
+  transition:.35s;cursor:pointer;}
+.subject-card:hover{transform:translateY(-6px) scale(1.02);box-shadow:0 12px 32px rgba(0,0,0,.14);}
+.card-header{display:flex;align-items:center;gap:.9rem;margin-bottom:.9rem;}
+.card-title{font-size:1.2rem;font-weight:800;color:#0f172a;}
+.card-description{font-size:.95rem;color:#475569;line-height:1.45rem;}
+.card-button{padding:.65rem 1.4rem;font-size:.95rem;font-weight:600;border-radius:12px;color:white;transition:.3s}
+.science{background:#16a34a;} .commerce{background:#1d4ed8;} .arts{background:#9333ea;}
+.glass-nav{position:sticky;top:0;z-index:50;backdrop-filter:blur(12px);background:rgba(19,59,106,.92);box-shadow:0 0 25px rgba(0,0,0,.18);}
+.fade-in{animation:fade .7s ease forwards;opacity:0;}@keyframes fade{to{opacity:1}}
+.quote-card{
+  background:white; border-left:8px solid #1e3a8a;
+  border-radius:12px; padding:18px 22px; margin-top:35px;
+  font-size:1.05rem; color:#334155; line-height:1.55rem;
+  box-shadow:0 8px 22px rgba(0,0,0,.12);
+}
+.hero{
+  background:var(--grad);
+  background-image:linear-gradient(to right, #0f172a,#1e3a8a,#22c55e);
+  color:white; padding:55px 18px;border-radius:20px;margin-bottom:40px;
+  box-shadow:0 12px 35px rgba(0,0,0,.22);
+}
+</style>
+</head>
+
+<body class="flex flex-col min-h-screen">
+
+
+<header class="glass-nav w-full py-4 px-5">
+  <h1 class="text-2xl font-extrabold text-gold tracking-wide">Ready4<span class="text-white">Exam</span></h1>
+  <p class="text-white text-sm opacity-85 italic mt-1 ml-1">Learn • Practice • Grow Strong — Every Day.</p>
+</header>
+
+
+<main class="flex-grow w-full max-w-[1050px] mx-auto px-4 py-10 fade-in">
+
+<!-- 🔥 Hero Welcome -->
+<section class="hero text-center leading-relaxed">
+  <h2 class="text-3xl md:text-4xl font-extrabold tracking-wide">CBSE Class 8 Learning Hub</h2>
+  <p id="class-note" class="mt-4 text-base md:text-lg max-w-2xl mx-auto opacity-95"></p>
+</section>
+
+
+<!-- STREAMS FOR CLASS 11 & 12 -->
+<div id="stream-section" class="grid grid-cols-1 md:grid-cols-3 gap-6 hidden">
+
+  <div onclick="showSubjects('Science')" class="subject-card">
+    <div class="card-header"><i data-lucide="flask-conical" class="text-green-700 h-8 w-8"></i><h3 class="card-title">Science</h3></div>
+    <p class="card-description">Physics, Chemistry, Biology & Maths.</p>
+    <div class="mt-5 text-center"><button class="card-button science">Explore Subjects</button></div>
+  </div>
+
+  <div onclick="showSubjects('Commerce')" class="subject-card">
+    <div class="card-header"><i data-lucide="briefcase" class="text-blue-700 h-8 w-8"></i><h3 class="card-title">Commerce</h3></div>
+    <p class="card-description">Accountancy • Economics • Business Studies.</p>
+    <div class="mt-5 text-center"><button class="card-button commerce">Explore Subjects</button></div>
+  </div>
+
+  <div onclick="showSubjects('Humanities')" class="subject-card">
+    <div class="card-header"><i data-lucide="landmark" class="text-purple-700 h-8 w-8"></i><h3 class="card-title">Humanities / Arts</h3></div>
+    <p class="card-description">History • Pol. Science • Geography • Sociology & more.</p>
+    <div class="mt-5 text-center"><button class="card-button arts">Explore Subjects</button></div>
+  </div>
+
+</div>
+
+
+<!-- SUBJECT LIST (Class 5–10) -->
+<div id="subject-section" class="hidden mt-10 fade-in">
+  <button onclick="backToStreams()" id="back-btn" class="px-4 py-2 bg-cbse-blue text-white rounded-lg mb-6 hidden">← Back</button>
+  <h3 id="selected-stream-title" class="text-2xl font-extrabold text-cbse-blue text-center my-4"></h3>
+  <div id="subject-grid" class="grid gap-5 md:grid-cols-2 lg:grid-cols-3"></div>
+</div>
+
+
+<!-- 🌟 Universal Growth Message -->
+<div class="quote-card text-center">
+  You don’t need to be perfect — just better than yesterday.<br/>
+  One chapter at a time, one concept at a time. Keep growing. 🌱🚀
+</div>
+
+</main>
+
+
+<footer class="bg-cbse-blue text-white text-center py-6 mt-auto">
+  <small>© 2025 Ready4Exam Academic Portal.</small>
+</footer>
+
+
+
+<!-- ================== SCRIPT ================== -->
+<script type="module">
+import { curriculum } from "./js/curriculum.js";
+
+const CLASS = parseInt("8",10);
+const isSenior = CLASS===11 || CLASS===12;
+
+const note=document.getElementById("class-note");
+const streamSection=document.getElementById("stream-section");
+const subjectSection=document.getElementById("subject-section");
+const grid=document.getElementById("subject-grid");
+const title=document.getElementById("selected-stream-title");
+const back=document.getElementById("back-btn");
+
+
+// 🔥 Class-Based Intro
+if(CLASS>=5 && CLASS<=8){
+  note.innerHTML="Curiosity today becomes learning tomorrow — explore subjects & build your base.";
+} else if(CLASS===9||CLASS===10){
+  note.innerHTML="You are entering deeper concepts — consistency will turn effort into confidence.";
+} else if(CLASS===11){
+  note.innerHTML="Your foundation year begins — explore your stream & build strong concepts.";
+} else if(CLASS===12){
+  note.innerHTML="Your boards & future pathway start here — learn smart, revise strong.";
+}
+
+
+// Senior logic
+if(isSenior){
+  streamSection.classList.remove("hidden");
+}else{
+  loadSubjects();
+}
+
+
+// STREAM FLOW
+window.showSubjects=function(stream){
+  streamSection.classList.add("hidden");
+  subjectSection.classList.remove("hidden");
+  back.classList.remove("hidden");
+  title.textContent=`${stream} Stream — Subjects`;
+  populateSubjects(stream);
+};
+
+window.backToStreams=()=>{subjectSection.classList.add("hidden");streamSection.classList.remove("hidden");};
+
+function loadSubjects(){
+  subjectSection.classList.remove("hidden");
+  back.classList.add("hidden");
+  title.textContent=`Subjects — Class ${CLASS}`;
+  populateSubjects();
+}
+
+// SUBJECT GRID
+function populateSubjects(stream){
+  grid.innerHTML="";
+  Object.keys(curriculum).forEach(sub=>{
+    if(stream && !Object.values(curriculum[sub]).some(c=>Array.isArray(c)&&c.some(x=>x.section?.includes(stream)))) return;
+
+    grid.innerHTML+=`
+    <a href="chapter-selection.html?subject=${encodeURIComponent(sub)}" class="subject-card">
+      <div class="card-header"><i data-lucide="book-open" class="text-cbse-blue h-8 w-8"></i>
+      <h3 class="card-title">${sub}</h3></div>
+      <p class="card-description">View chapters for ${sub}</p>
+      <div class="mt-5 text-center"><button class="card-button bg-cbse-blue">View Chapters</button></div>
+    </a>`;
+  });
+
+  lucide.createIcons();
+}
+</script>
+
+</body>
+</html>

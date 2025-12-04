@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>Ready4Exam | Quiz Engine — Class 8</title>
+
+  <!-- Tailwind + Fonts -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily:{ sans:['Inter','sans-serif'] },
+          colors:{ 'cbse-blue':'#1a3e6a','cbse-light':'#f5f7fa','accent-gold':'#ffb703' }
+        }
+      }
+    }
+  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet"/>
+
+  <style>
+    html, body { height: 100%; width: 100%; margin: 0; padding: 0; }
+    body { font-family: 'Inter', sans-serif; background-color: #f5f7fa; }
+    .option-label { transition: all 0.2s; }
+    .option-label.correct { border-color:#16a34a; background:#dcfce7; }
+    .option-label.incorrect { border-color:#dc2626; background:#fee2e2; }
+    .option-label:hover { border-color:#2563eb; }
+  </style>
+</head>
+
+<body class="bg-cbse-light min-h-screen w-full flex flex-col">
+
+<!-- HEADER -->
+<header class="bg-cbse-blue shadow-md py-4 px-6 flex justify-between items-center">
+  <div class="flex items-center space-x-4">
+    <a href="index.html"
+       class="p-2 bg-white text-cbse-blue font-semibold rounded-full shadow hover:bg-gray-100 transition">🏠</a>
+
+    <div>
+      <h2 id="chapter-name-display" class="text-xl font-bold text-accent-gold leading-tight"></h2>
+      <p class="text-sm text-white opacity-90 italic mt-1 leading-snug">
+        Ready4Exam helps students excel — by Ready4Industry.
+      </p>
+    </div>
+  </div>
+
+  <div class="flex items-center space-x-4">
+      <span id="user-welcome" class="text-sm text-white font-semibold"></span>
+
+      <span id="difficulty-display"
+        class="px-3 py-1 text-sm font-semibold bg-yellow-100 text-yellow-800 rounded-full">
+        Difficulty: Simple
+      </span>
+
+      <button id="logout-nav-btn"
+        class="hidden px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600">Sign Out</button>
+  </div>
+</header>
+
+
+<div id="status-message" class="text-center p-6 font-semibold text-blue-700 hidden"></div>
+
+
+<div id="paywall-screen" class="flex flex-col items-center justify-center flex-grow p-12">
+  <div class="bg-white rounded-xl p-10 shadow-xl border text-center max-w-md">
+    <h2 class="text-2xl font-bold text-gray-800 mb-4">Sign in to Continue</h2>
+    <p class="text-gray-600 mb-6">Sign in with Google to access quizzes.</p>
+    <button id="google-signin-btn"
+      class="px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700">
+      Sign in with Google
+    </button>
+  </div>
+</div>
+
+
+<main id="quiz-content" class="hidden flex flex-col items-center max-w-4xl mx-auto px-4 py-8">
+  <div id="question-list" class="w-full space-y-6 mb-8"></div>
+
+  <div class="w-full flex justify-between items-center bg-white rounded-lg shadow p-4">
+    <button id="prev-btn" class="px-5 py-2 bg-gray-200 rounded-lg hover:bg-gray-300">Previous</button>
+    <span id="question-counter" class="font-semibold text-gray-700">-- / --</span>
+    <div class="flex space-x-2">
+      <button id="next-btn" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Next</button>
+      <button id="submit-btn" class="hidden px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">Submit Quiz</button>
+    </div>
+  </div>
+</main>
+
+
+<section id="results-screen" class="hidden flex flex-col items-center text-center py-10 px-6">
+  <h2 class="text-3xl font-extrabold text-green-600 mb-4">Quiz Completed!</h2>
+  <p class="text-lg text-gray-700 mb-3">Your Final Score:</p>
+  <p id="score-display" class="text-5xl font-bold text-blue-700 mb-8">-- / --</p>
+
+  <div class="flex gap-3 mb-6">
+      <button onclick="changeDifficulty('simple')" class="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700">Simple (Easy)</button>
+      <button onclick="changeDifficulty('medium')" class="px-6 py-3 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600">Medium</button>
+      <button onclick="changeDifficulty('advanced')" class="px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700">Advanced</button>
+  </div>
+
+  <button id="go-back-chapter-btn"
+      class="px-7 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+      Go Back to Chapter Selection
+  </button>
+</section>
+
+
+<footer class="bg-cbse-blue text-white text-center py-6 mt-auto">
+  <small>© 2025 Ready4Exam Academic Portal.</small>
+</footer>
+
+
+<script>
+function changeDifficulty(level){
+  const url = new URL(window.location.href);
+  url.searchParams.set("difficulty", level);
+  window.location.href = url.toString();
+}
+</script>
+
+
+<!-- 🔥 REQUIRED AUTH INIT -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-app.js";
+
+const firebaseConfig = window.__firebase_config;
+initializeApp(firebaseConfig);
+</script>
+
+
+<!-- 🔥 AUTH LISTENER + AUTO FIX FOR NO-REFRESH LOGIN -->
+<script type="module">
+import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-auth.js";
+
+document.addEventListener("DOMContentLoaded", () => {
+
+  const auth = getAuth();
+
+  onAuthStateChanged(auth, (user) => {
+    if (user) {
+      const username = user.email.split("@")[0];
+      document.getElementById("user-welcome").textContent = `Welcome, ${username}`;
+      document.getElementById("logout-nav-btn").classList.remove("hidden");
+
+      document.getElementById("logout-nav-btn").onclick = async () => {
+        await signOut(auth);
+        location.href = "index.html"; // You confirmed this works
+      };
+    }
+  });
+
+  /* 🔥 Ensures header loads immediately after login (no refresh needed) */
+  setTimeout(() => {
+    const user = getAuth().currentUser;
+    if (user) {
+      const username = user.email.split("@")[0];
+      document.getElementById("user-welcome").textContent = `Welcome, ${username}`;
+      document.getElementById("logout-nav-btn").classList.remove("hidden");
+    }
+  }, 400);
+
+  const urlParams = new URLSearchParams(location.search);
+  const subject = urlParams.get("subject");
+
+  const backBottom = document.getElementById("go-back-chapter-btn");
+  if(backBottom){
+    backBottom.addEventListener("click", () =>{
+      if (subject) {
+        location.href = `chapter-selection.html?subject=${encodeURIComponent(subject)}`;
+      } else {
+        alert("⚠ Subject was not passed — cannot return accurately.");
+      }
+    });
+  }
+});
+</script>
+
+
+<script>
+window.__firebase_config = {
+  apiKey:"AIzaSyAXdKiYRxBKAj280YcNuNwlKKDp85xpOWQ",
+  authDomain:"quiz-signon.firebaseapp.com",
+  projectId:"quiz-signon",
+  storageBucket:"quiz-signon.appspot.com",
+  messagingSenderId:"863414222321",
+  appId:"1:863414222321:web:819f5564825308bcd9d850",
+  supabaseUrl:"https://zqhzekzilalbszpfwxhn.supabase.co",
+  supabaseAnonKey:"sb_publishable_YkwxnAk1xdI8n2GOhTn4VA_v7viBnys",
+};
+</script>
+
+<script type="module" src="./js/config.js"></script>
+<script type="module" src="./js/auth-paywall.js"></script>
+script type="module" src="./js/api.js"></script>
+<script type="module" src="./js/ui-renderer.js"></script>
+<script type="module" src="./js/quiz-engine.js"></script>
+
+</body>
+</html>
