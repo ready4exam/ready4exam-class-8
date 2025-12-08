@@ -67,7 +67,7 @@
 
 <script type="module">
 import curriculum from "./js/curriculum.js";
-import { transliterate as tr } from "https://cdn.jsdelivr.net/npm/transliteration/+esm";   // 🔥 Added (Only required change)
+import { transliterate as tr } from "https://cdn.jsdelivr.net/npm/transliteration/+esm";
 
 // Existing variables remain unchanged
 const CLASS_ID = "8"; // automation replaces 11 or 12
@@ -143,25 +143,32 @@ document.querySelectorAll(".difficulty-btn").forEach(btn=>{
 });
 
 /* -----------------------------
-   🔥 Updated Table-Builder Logic (Same as Backend)
+   UPDATED TABLE BUILDER (Matches Backend)
 ------------------------------*/
 function buildTable(ch){
-  let raw = ch || "";
-  let chapter = tr(raw)
+  // Chapter cleanup
+  let chapter = tr(ch || "")
     .toLowerCase()
     .replace(/[^a-z0-9\s]/g," ")
     .replace(/\s+/g," ")
     .trim();
 
   const skip=["as","of","the","a","an","in","on","for","to","ki","ke","ka"];
+  const words = chapter.split(" ");
+  const filtered = words.filter(w=>!skip.includes(w));
 
-  let words = chapter.split(" ");
-  let filtered = words.filter(w=>!skip.includes(w));
+  const first = filtered[0] || words[0] || "ch";
+  const last  = filtered[filtered.length-1] || words[words.length-1] || "x";
 
-  let first = filtered[0] || words[0] || "ch";
-  let last  = filtered[filtered.length-1] || words[words.length-1] || "x";
+  // 🔥 subject prefix added (new rule)
+  let subjectSlug = tr(subject)
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g," ")
+    .replace(/\s+/g," ")
+    .trim()
+    .split(" ")[0] || "subject";
 
-  return `${first}_${last}_${CLASS_ID}_quiz`;
+  return `${subjectSlug}_${first}_${last}_${CLASS_ID}_quiz`;
 }
 
 /* ----------------------------- */
