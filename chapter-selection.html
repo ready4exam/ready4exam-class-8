@@ -50,8 +50,9 @@
   <div id="difficulty-container" class="hidden mb-10 text-center">
     <h3 class="text-2xl font-bold text-cbse-blue mb-4">Select Difficulty</h3>
     <div class="flex flex-wrap justify-center gap-4">
-      <button data-diff="Simple" class="difficulty-btn bg-green-600 text-white">Simple</button>
-      <button data-diff="Medium" class="difficulty-btn bg-yellow-500 text-white">Medium</button>
+      <!-- 🔥 data-diff now matches Supabase values exactly -->
+      <button data-diff="Simple"   class="difficulty-btn bg-green-600 text-white">Simple</button>
+      <button data-diff="Medium"   class="difficulty-btn bg-yellow-500 text-white">Medium</button>
       <button data-diff="Advanced" class="difficulty-btn bg-red-600 text-white">Advanced</button>
     </div>
   </div>
@@ -74,17 +75,25 @@
 import curriculum from "./js/curriculum.js";
 import { transliterate as tr } from "https://cdn.jsdelivr.net/npm/transliteration/+esm";
 
-const CLASS_ID = "8";  
+const CLASS_ID = "8";
 const subject  = new URLSearchParams(location.search).get("subject") || "";
 
 const content     = document.getElementById("content-container");
 const diffBox     = document.getElementById("difficulty-container");
 const startBtn    = document.getElementById("start-quiz");
 const errorMsg    = document.getElementById("error-msg");
+const subjectDesc = document.getElementById("subject-desc");
 
 let selectedBook = null;
 let selectedChapter = null;
 let selectedDifficulty = null;
+
+subjectDesc.textContent = ({
+  Physics: "Explore mechanics, waves & thermodynamics.",
+  Chemistry: "Atoms, reactions, bonding & periodicity.",
+  Biology: "Cells, plants, human body & ecosystems.",
+  Mathematics: "Numbers, algebra, geometry & graphs."
+}[subject]) || "";
 
 /* --------------------------
    BOOK LISTING
@@ -95,8 +104,10 @@ function renderBooks(){
   document.getElementById("page-title").textContent = `Select Book for ${subject}`;
   content.innerHTML = "";
 
-  if (!data)
-    return content.innerHTML = "<p class='text-center text-gray-600'>No books found.</p>";
+  if (!data) {
+    content.innerHTML = "<p class='text-center text-gray-600'>No books found.</p>";
+    return;
+  }
 
   Object.keys(data).forEach(book=>{
     const btn = document.createElement("button");
@@ -112,7 +123,6 @@ function renderBooks(){
 --------------------------- */
 function renderChapters(book){
   selectedBook = book;
-
   const chapters = curriculum[subject][book];
 
   document.getElementById("page-title").textContent = `${book} — Chapters`;
@@ -120,7 +130,6 @@ function renderChapters(book){
 
   chapters.forEach(ch=>{
     const t = ch.chapter_title || ch.title || ch;
-
     const btn = document.createElement("button");
     btn.className = "topic-btn";
     btn.textContent = t;
@@ -154,7 +163,7 @@ document.querySelectorAll(".difficulty-btn").forEach(btn=>{
     document.querySelectorAll(".difficulty-btn").forEach(x=>x.classList.remove("selected"));
     e.target.classList.add("selected");
 
-    selectedDifficulty = e.target.dataset.diff;
+    selectedDifficulty = e.target.dataset.diff; // "Simple" | "Medium" | "Advanced"
     startBtn.disabled = false;
   };
 });
@@ -187,7 +196,7 @@ function buildTableName(chapter){
 }
 
 /* --------------------------
-   START QUIZ — FULL META PASSED
+   START QUIZ — FULL META
 --------------------------- */
 startBtn.onclick = ()=>{
 
@@ -204,14 +213,13 @@ startBtn.onclick = ()=>{
     subject,
     book: selectedBook,
     chapter: selectedChapter,
-    difficulty: selectedDifficulty,
+    difficulty: selectedDifficulty,  // "Simple" | "Medium" | "Advanced"
     table
   });
 
   location.href = `quiz-engine.html?${params.toString()}`;
 };
 
-// Start
 renderBooks();
 </script>
 

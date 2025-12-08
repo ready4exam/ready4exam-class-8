@@ -2,7 +2,7 @@
 // -----------------------------------------------------------------------------
 // UNIVERSAL QUIZ ENGINE (Class 5–12)
 // - CLASS_ID auto replaced by automation: 8
-// - Now aligned with URL params: class, subject, book, chapter, difficulty, table
+// - Uses difficulty exactly: "Simple" | "Medium" | "Advanced"
 // -----------------------------------------------------------------------------
 
 import { initializeServices, getAuthUser } from "./config.js";
@@ -23,8 +23,8 @@ const CLASS_ID = "8";
 let quizState = {
   classId: CLASS_ID,
   subject: "",
-  topicSlug: "",     // table name
-  difficulty: "",    // simple/medium/advanced (lowercase)
+  topicSlug: "",
+  difficulty: "",
   questions: [],
   currentQuestionIndex: 0,
   userAnswers: {},
@@ -33,7 +33,7 @@ let quizState = {
 };
 
 // ===========================================================
-// SMART CHAPTER LOOKUP (fallback when URL doesn't give chapter)
+// SMART CHAPTER LOOKUP (fallback)
 // ===========================================================
 function findCurriculumMatch(topicSlug) {
   const clean = s =>
@@ -56,47 +56,44 @@ function findCurriculumMatch(topicSlug) {
 }
 
 // ===========================================================
-// URL + HEADER FORMAT  ⭐ UPDATED TO USE FULL META
+// URL + HEADER FORMAT
 // ===========================================================
 function parseUrlParameters() {
   const params = new URLSearchParams(location.search);
 
-  // New URL schema (from chapter-selection.html)
-  const urlClass    = params.get("class");
-  const urlSubject  = params.get("subject");
-  const urlBook     = params.get("book");      // currently not used here, but reserved
-  const urlChapter  = params.get("chapter");
-  const urlTable    = params.get("table") || params.get("topic") || "";
-  let   urlDiff     = params.get("difficulty") || "simple";
+  const urlClass    = params.get("class")   || CLASS_ID;
+  const urlSubject  = params.get("subject") || "";
+  const urlBook     = params.get("book")    || null;   // currently unused but reserved
+  const urlChapter  = params.get("chapter") || "";
+  const urlTable    = params.get("table")   || params.get("topic") || "";
+  let   urlDiff     = params.get("difficulty") || "Simple";
 
-  // Normalize difficulty to lowercase for backend/API
-  urlDiff = urlDiff.toLowerCase();
+  // Enforce allowed difficulty values
+  const allowed = ["Simple","Medium","Advanced"];
+  if (!allowed.includes(urlDiff)) urlDiff = "Simple";
 
-  // Store in state
-  quizState.classId   = urlClass || CLASS_ID;
-  quizState.subject   = urlSubject || "";
+  quizState.classId   = urlClass;
+  quizState.subject   = urlSubject;
   quizState.topicSlug = urlTable;
-  quizState.difficulty = urlDiff;
+  quizState.difficulty = urlDiff; // EXACT casing, matches Supabase
 
   if (!quizState.topicSlug) {
     throw new Error("Topic/table not provided in URL");
   }
 
-  // -------------------------------------------------------
-  // ✅ PRIMARY PATH: subject + chapter are provided in URL
-  // -------------------------------------------------------
+  // Primary path: subject + chapter provided
   if (urlSubject && urlChapter) {
     const chapter = urlChapter.trim();
     const subject = urlSubject.trim();
 
-    const headerTitle = `Class ${quizState.classId}: ${subject} - ${chapter} Worksheet`;
+    const headerTitle =
+      `Class ${quizState.classId}: ${subject} - ${chapter} Worksheet`;
+
     UI.updateHeader(headerTitle, quizState.difficulty);
     return;
   }
 
-  // -------------------------------------------------------
-  // 🔁 FALLBACK PATH: derive from curriculum.js via table_id
-  // -------------------------------------------------------
+  // Fallback path: infer from curriculum
   const match = findCurriculumMatch(quizState.topicSlug);
 
   if (!match) {
@@ -111,16 +108,17 @@ function parseUrlParameters() {
       .trim()
       .replace(/\b\w/g, c => c.toUpperCase());
 
-    const headerTitle = `Class ${quizState.classId}: ${pretty} Worksheet`;
+    const headerTitle =
+      `Class ${quizState.classId}: ${pretty} Worksheet`;
     UI.updateHeader(headerTitle, quizState.difficulty);
     return;
   }
 
-  // Curriculum-linked chapter → use subject + full chapter name
   quizState.subject = match.subject;
   const chapter = match.title.replace(/quiz/ig, "").trim();
 
-  const headerTitle = `Class ${quizState.classId}: ${quizState.subject} - ${chapter} Worksheet`;
+  const headerTitle =
+    `Class ${quizState.classId}: ${quizState.subject} - ${chapter} Worksheet`;
   UI.updateHeader(headerTitle, quizState.difficulty);
 }
 
@@ -193,7 +191,7 @@ async function loadQuiz() {
     const q = await fetchQuestions(quizState.topicSlug, quizState.difficulty);
     if (!q?.length) throw new Error("No questions found.");
 
-    quizState.questions = q;
+    quizState.questions   = q;
     quizState.userAnswers = Object.fromEntries(q.map(x => [x.id, null]));
 
     renderQuestion();
@@ -214,11 +212,11 @@ function attachDomEvents() {
     const b = e.target.closest("button,a");
     if (!b) return;
 
-    if (b.id === "prev-btn") return handleNavigation(-1);
-    if (b.id === "next-btn") return handleNavigation(1);
+    if (b.id === "prev-btn")   return handleNavigation(-1);
+    if (b.id === "next-btn")   return handleNavigation(1);
     if (b.id === "submit-btn") return handleSubmit();
 
-    if (["login-btn", "google-signin-btn", "paywall-login-btn"].includes(b.id))
+    if (["login-btn","google-signin-btn","paywall-login-btn"].includes(b.id))
       return signInWithGoogle();
 
     if (b.id === "logout-nav-btn") return signOut();
