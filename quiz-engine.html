@@ -120,7 +120,7 @@ function changeDifficulty(level){
 </script>
 
 
-<!-- 🔥 REQUIRED AUTH INIT -->
+<!-- REQUIRED AUTH INIT -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-app.js";
 
@@ -129,7 +129,7 @@ initializeApp(firebaseConfig);
 </script>
 
 
-<!-- 🔥 AUTH LISTENER + AUTO FIX FOR NO-REFRESH LOGIN -->
+<!-- AUTH LISTENER -->
 <script type="module">
 import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-auth.js";
 
@@ -145,12 +145,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
       document.getElementById("logout-nav-btn").onclick = async () => {
         await signOut(auth);
-        location.href = "index.html"; // You confirmed this works
+        location.href = "index.html";
       };
     }
   });
 
-  /* 🔥 Ensures header loads immediately after login (no refresh needed) */
+  // Auto-load on no-refresh login
   setTimeout(() => {
     const user = getAuth().currentUser;
     if (user) {
@@ -168,10 +168,35 @@ document.addEventListener("DOMContentLoaded", () => {
     backBottom.addEventListener("click", () =>{
       if (subject) {
         location.href = `chapter-selection.html?subject=${encodeURIComponent(subject)}`;
-      } else {
-        alert("⚠ Subject was not passed — cannot return accurately.");
       }
     });
+  }
+});
+</script>
+
+
+<!-- 🔥 UPDATED HEADER TITLE LOGIC (YOUR FIX) -->
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+
+  const url = new URLSearchParams(location.search);
+
+  const CLASS_ID = url.get("class") || "";
+  const subject = url.get("subject") || "";
+  const chapter = url.get("chapter") || "";
+
+  if (CLASS_ID && subject && chapter) {
+    const wordCount = chapter.trim().split(/\s+/).length;
+
+    let displayTitle = "";
+
+    if (wordCount === 1) {
+      displayTitle = `Class ${CLASS_ID}: ${subject} - ${chapter} Worksheet`;
+    } else {
+      displayTitle = `Class ${CLASS_ID}: ${subject} - ${chapter} Worksheet`;
+    }
+
+    document.getElementById("chapter-name-display").textContent = displayTitle;
   }
 });
 </script>
