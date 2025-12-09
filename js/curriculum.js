@@ -82,7 +82,7 @@ export const curriculum = {
       },
       {
         "chapter_title": "Pollution of Air and Water",
-        "table_id": "",
+        "table_id": "science_pollution_water_8_quiz",
         "section": "Science"
       }
     ]
