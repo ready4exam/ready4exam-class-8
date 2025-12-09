@@ -226,7 +226,7 @@ export const curriculum = {
       },
       {
         "chapter_title": "Understanding Quadrilaterals",
-        "table_id": "",
+        "table_id": "mathematics_understanding_quadrilaterals_8_quiz",
         "section": "Mathematics"
       },
       {
