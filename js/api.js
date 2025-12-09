@@ -13,22 +13,28 @@ function getTableName(topic) {
 export async function fetchQuestions(topic, difficulty) {
   const { supabase } = getInitializedClients();
   const table = getTableName(topic);
-  const diff = (difficulty || "medium")
-  .toString()
-  .trim()
-  .toLowerCase()
-  .replace(/\s+/g, "")
-  .replace(/^./, c => c.toUpperCase());
-  
+
+  // Normalize to Simple, Medium, Advanced
+  const diff = (difficulty || "Simple")
+    .toString()
+    .trim()
+    .replace(/\s+/g, "")
+    .replace(/^./, c => c.toUpperCase());
+
   UI.showStatus(`Loading ${table} (${diff})...`);
 
+  // NEW 🔥 Matches even if difficulty has extra spaces or casing issues
   const { data, error } = await supabase
     .from(table)
-    .select("id,question_text,question_type,scenario_reason_text,option_a,option_b,option_c,option_d,correct_answer_key")
-    .eq("difficulty", diff);
+    .select("id,question_text,question_type,scenario_reason_text,option_a,option_b,option_c,option_d,correct_answer_key,difficulty")
+    .or(`difficulty.eq.${diff},difficulty.ilike.${diff}%`);
 
   if (error) throw new Error(error.message);
-  if (!data || !data.length) throw new Error("No questions found.");
+
+  if (!data || !data.length) {
+    console.warn("DEBUG SUPABASE ROWS:", data);
+    throw new Error("No questions found.");
+  }
 
   return data.map(q => ({
     id: q.id,
@@ -42,6 +48,7 @@ export async function fetchQuestions(topic, difficulty) {
     correct_answer: q.correct_answer_key.trim().toUpperCase(),
     scenario_reason: cleanKatexMarkers(q.scenario_reason_text || ""),
     question_type: (q.question_type || "").toLowerCase(),
+    difficulty: q.difficulty
   }));
 }
 
