@@ -216,7 +216,7 @@ export const curriculum = {
     "Number System and Algebra": [
       {
         "chapter_title": "Rational Numbers",
-        "table_id": "",
+        "table_id": "mathematics_rational_numbers_8_quiz",
         "section": "Mathematics"
       },
       {
