@@ -106,7 +106,7 @@ export const curriculum = {
       },
       {
         "chapter_title": "Tribals, Dikus and the Vision of a Golden Age",
-        "table_id": "",
+        "table_id": "social_tribals_age_8_quiz",
         "section": "Social Science"
       },
       {
