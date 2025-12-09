@@ -138,7 +138,7 @@ export const curriculum = {
       },
       {
         "chapter_title": "Understanding Secularism",
-        "table_id": "",
+        "table_id": "social_understanding_secularism_8_quiz",
         "section": "Social Science"
       },
       {
