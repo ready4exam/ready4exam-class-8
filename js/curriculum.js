@@ -251,7 +251,7 @@ export const curriculum = {
       },
       {
         "chapter_title": "Algebraic Expressions and Identities",
-        "table_id": "",
+        "table_id": "mathematics_algebraic_identities_8_quiz",
         "section": "Mathematics"
       },
       {
