@@ -133,7 +133,7 @@ export const curriculum = {
     "Civics": [
       {
         "chapter_title": "The Indian Constitution",
-        "table_id": "",
+        "table_id": "social_indian_constitution_8_quiz",
         "section": "Social Science"
       },
       {
