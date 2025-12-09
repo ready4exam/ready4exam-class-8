@@ -143,7 +143,7 @@ export const curriculum = {
       },
       {
         "chapter_title": "Parliament and the Making of Laws",
-        "table_id": "",
+        "table_id": "social_parliament_laws_8_quiz",
         "section": "Social Science"
       },
       {
