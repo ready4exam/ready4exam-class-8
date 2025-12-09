@@ -263,7 +263,7 @@ export const curriculum = {
     "Geometry and Visualisation": [
       {
         "chapter_title": "Visualising Solid Shapes",
-        "table_id": "",
+        "table_id": "mathematics_visualising_shapes_8_quiz",
         "section": "Mathematics"
       }
     ],
