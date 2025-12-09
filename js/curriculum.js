@@ -290,7 +290,7 @@ export const curriculum = {
       },
       {
         "chapter_title": "Introduction to Graphs",
-        "table_id": "",
+        "table_id": "mathematics_introduction_graphs_8_quiz",
         "section": "Mathematics"
       }
     ]
