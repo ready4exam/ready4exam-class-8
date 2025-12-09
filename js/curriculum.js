@@ -241,7 +241,7 @@ export const curriculum = {
       },
       {
         "chapter_title": "Cube and Cube Roots",
-        "table_id": "",
+        "table_id": "mathematics_cube_roots_8_quiz",
         "section": "Mathematics"
       },
       {
