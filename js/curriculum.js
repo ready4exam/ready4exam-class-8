@@ -40,7 +40,7 @@ export const curriculum = {
       },
       {
         "chapter_title": "Materials: Metals and Non-Metals",
-        "table_id": "",
+        "table_id": "science_materials_metals_8_quiz",
         "section": "Science"
       },
       {
