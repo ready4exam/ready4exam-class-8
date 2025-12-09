@@ -280,7 +280,7 @@ export const curriculum = {
       },
       {
         "chapter_title": "Data Handling",
-        "table_id": "",
+        "table_id": "mathematics_data_handling_8_quiz",
         "section": "Mathematics"
       },
       {
