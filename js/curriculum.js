@@ -270,7 +270,7 @@ export const curriculum = {
     "Mensuration, Data Handling and Graphs": [
       {
         "chapter_title": "Practical Geometry",
-        "table_id": "",
+        "table_id": "mathematics_practical_geometry_8_quiz",
         "section": "Mathematics"
       },
       {
