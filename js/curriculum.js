@@ -221,7 +221,7 @@ export const curriculum = {
       },
       {
         "chapter_title": "Linear Equations in One Variable",
-        "table_id": "",
+        "table_id": "mathematics_linear_variable_8_quiz",
         "section": "Mathematics"
       },
       {
