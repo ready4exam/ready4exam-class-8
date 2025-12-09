@@ -231,7 +231,7 @@ export const curriculum = {
       },
       {
         "chapter_title": "Exponents and Powers",
-        "table_id": "",
+        "table_id": "mathematics_exponents_powers_8_quiz",
         "section": "Mathematics"
       },
       {
