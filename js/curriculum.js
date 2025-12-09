@@ -285,7 +285,7 @@ export const curriculum = {
       },
       {
         "chapter_title": "Direct and Inverse Proportions",
-        "table_id": "",
+        "table_id": "mathematics_direct_proportions_8_quiz",
         "section": "Mathematics"
       },
       {
