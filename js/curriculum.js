@@ -236,7 +236,7 @@ export const curriculum = {
       },
       {
         "chapter_title": "Square and Square Roots",
-        "table_id": "",
+        "table_id": "mathematics_square_roots_8_quiz",
         "section": "Mathematics"
       },
       {
