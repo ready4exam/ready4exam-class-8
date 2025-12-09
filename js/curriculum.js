@@ -72,7 +72,7 @@ export const curriculum = {
       },
       {
         "chapter_title": "Reproduction in Animals",
-        "table_id": "",
+        "table_id": "science_reproduction_animals_8_quiz",
         "section": "Science"
       },
       {
