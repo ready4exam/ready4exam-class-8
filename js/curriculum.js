@@ -45,7 +45,7 @@ export const curriculum = {
       },
       {
         "chapter_title": "Coal and Petroleum",
-        "table_id": "",
+        "table_id": "science_coal_petroleum_8_quiz",
         "section": "Science"
       },
       {
