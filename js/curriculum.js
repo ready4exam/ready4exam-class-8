@@ -246,7 +246,7 @@ export const curriculum = {
       },
       {
         "chapter_title": "Comparing Quantities",
-        "table_id": "",
+        "table_id": "mathematics_comparing_quantities_8_quiz",
         "section": "Mathematics"
       },
       {
