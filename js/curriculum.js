@@ -256,7 +256,7 @@ export const curriculum = {
       },
       {
         "chapter_title": "Factorisation",
-        "table_id": "",
+        "table_id": "mathematics_factorisation_factorisation_8_quiz",
         "section": "Mathematics"
       }
     ],
