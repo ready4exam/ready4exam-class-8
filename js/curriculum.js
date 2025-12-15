@@ -175,7 +175,7 @@ export const curriculum = {
     "Geography": [
       {
         "chapter_title": "Resources",
-        "table_id": "",
+        "table_id": "social_resources_resources_8_quiz",
         "section": "Social Science"
       },
       {
