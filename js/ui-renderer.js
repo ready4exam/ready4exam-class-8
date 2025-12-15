@@ -575,5 +575,5 @@ export function showResultFeedback(feedback) {
 
   container.appendChild(titleEl);
   container.appendChild(msgEl);
-
+}
   //
