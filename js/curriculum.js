@@ -180,7 +180,7 @@ export const curriculum = {
       },
       {
         "chapter_title": "Land, Soil, Water, Natural Vegetation and Wildlife Resources",
-        "table_id": "",
+        "table_id": "social_land_resources_8_quiz",
         "section": "Social Science"
       },
       {
