@@ -207,7 +207,7 @@ export const curriculum = {
     "Economics": [
       {
         "chapter_title": "Understanding the Economy",
-        "table_id": "",
+        "table_id": "social_understanding_economy_8_quiz",
         "section": "Social Science"
       }
     ]
