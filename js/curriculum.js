@@ -200,7 +200,7 @@ export const curriculum = {
       },
       {
         "chapter_title": "Human Resources",
-        "table_id": "",
+        "table_id": "social_human_resources_8_quiz",
         "section": "Social Science"
       }
     ],
