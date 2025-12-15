@@ -1,6 +1,5 @@
 // js/ui-renderer.js 
 import { cleanKatexMarkers } from './utils.js';
-
 let els = {};
 let isInit = false;
 
@@ -8,7 +7,6 @@ function normalizeReasonText(txt) {
   if (!txt) return "";
   return txt.replace(/^\s*(Reasoning|Reason|Context)\s*(\(R\))?\s*:\s*/i, "").trim();
 }
-
 /* -----------------------------------
    ELEMENT INITIALIZATION
 ----------------------------------- */
@@ -47,7 +45,6 @@ export function initializeElements() {
 
   isInit = true;
 }
-
 /* -----------------------------------
    STATUS MESSAGE
 ----------------------------------- */
@@ -152,6 +149,28 @@ export function showView(viewName) {
 export function renderQuestion(q, idxOneBased, selected, submitted) {
   initializeElements();
   if (!els.list) return;
+
+  // ---------------------------
+  // Universal normalizer (safe)
+  // maps different field names from DB/backend to UI fields
+  // ---------------------------
+  const mapped = {
+    id: q.id,
+    question_type: (q.question_type || q.type || "").toLowerCase(),
+    text: q.text || q.question_text || q.prompt || "",
+    scenario_reason: q.scenario_reason || q.scenario_reason_text || q.context || q.passage || "",
+    explanation: q.explanation || q.explanation_text || q.reason || "",
+    correct_answer: q.correct_answer || q.correct_answer_key || q.answer || "",
+    options: {
+      A: (q.options && (q.options.A || q.options.a)) || q.option_a || q.a || q.opt_a || "",
+      B: (q.options && (q.options.B || q.options.b)) || q.option_b || q.b || q.opt_b || "",
+      C: (q.options && (q.options.C || q.options.c)) || q.option_c || q.c || q.opt_c || "",
+      D: (q.options && (q.options.D || q.options.d)) || q.option_d || q.d || q.opt_d || ""
+    }
+  };
+
+  // use mapped object for downstream logic
+  q = mapped;
 
   const type = (q.question_type || "").toLowerCase();
 
@@ -410,27 +429,151 @@ export function showResults(score, total) {
 }
 
 export function renderAllQuestionsForReview(questions, userAnswers = {}) {
-  initializeElements();
-  if (!els.reviewContainer) return;
+  initializeElements();
+  if (!els.reviewContainer) return;
 
-  const html = questions.map((q, i) => {
-    const txt = cleanKatexMarkers(q.text || "");
-    const reason = normalizeReasonText(cleanKatexMarkers(q.explanation || ""));
-    const isCase = q.question_type?.toLowerCase() === "case";
-    const label = isCase ? "Context" : "Reasoning (R)";
-    const ua = userAnswers[q.id] || "-";
-    const ca = q.correct_answer || "-";
-    const correct = ua && ua.toUpperCase() === ca.toUpperCase();
+  const html = questions.map((q, i) => {
+    const txt = cleanKatexMarkers(q.text || "");
+    const reason = normalizeReasonText(cleanKatexMarkers(q.explanation || ""));
+    const isCase = q.question_type?.toLowerCase() === "case";
+    const label = isCase ? "Context" : "Reasoning (R)";
 
-    return `
-      <div class="mb-6 p-4 bg-white rounded-lg border border-gray-100 shadow-sm">
-        <p class="font-bold text-lg mb-1">Q${i + 1}: ${txt}</p>
-        ${reason ? `<p class="text-gray-700 mb-2">${label}: ${reason}</p>` : ""}
-        <p>Your Answer: <span class="${correct?"text-green-600":"text-red-600"} font-semibold">${ua}</span></p>
-        <p>Correct Answer: <b class="text-green-700">${ca}</b></p>
-      </div>`;
-  }).join("");
+    const uaOpt = userAnswers[q.id];
+    const caOpt = q.correct_answer;
 
-  els.reviewContainer.innerHTML = html;
-  showView("results-screen");
+    const uaText = uaOpt
+      ? cleanKatexMarkers(q.options?.[uaOpt] || "")
+      : "Not Attempted";
+
+    const caText = caOpt
+      ? cleanKatexMarkers(q.options?.[caOpt] || "")
+      : "-";
+
+    const correct =
+      uaOpt && caOpt &&
+      uaOpt.toUpperCase() === caOpt.toUpperCase();
+
+    return `
+      <div class="mb-6 p-4 bg-white rounded-lg border border-gray-100 shadow-sm">
+        <p class="font-bold text-lg mb-1">Q${i + 1}: ${txt}</p>
+        ${reason ? `<p class="text-gray-700 mb-2">${label}: ${reason}</p>` : ""}
+        <p>
+          Your Answer:
+          <span class="${correct ? "text-green-600" : "text-red-600"} font-semibold">
+            ${uaOpt ? `(${uaOpt}) ${uaText}` : "Not Attempted"}
+          </span>
+        </p>
+        <p>
+          Correct Answer:
+          <span class="text-green-700 font-semibold">
+            (${caOpt}) ${caText}
+          </span>
+        </p>
+      </div>`;
+  }).join("");
+
+  els.reviewContainer.innerHTML = html;
+  showView("results-screen");
 }
+/* -----------------------------------
+   RESULT FEEDBACK DECISION ENGINE
+----------------------------------- */
+export function getResultFeedback({ score, total, difficulty }) {
+  const percentage = total > 0 ? Math.round((score / total) * 100) : 0;
+
+  let title = "";
+  let message = "";
+  let showRequestMoreBtn = false;
+
+  // ================= SIMPLE =================
+  if (difficulty === "Simple") {
+    if (percentage >= 90) {
+      title = "Excellent Work!";
+      message =
+        "You have mastered the basics. Try Medium difficulty to strengthen your understanding.";
+    } else if (percentage >= 60) {
+      title = "Good Progress!";
+      message =
+        "You are doing well. Practice a bit more to improve your accuracy.";
+    } else {
+      title = "Keep Practicing!";
+      message =
+        "Focus on understanding the concepts and try again.";
+    }
+  }
+
+  // ================= MEDIUM =================
+  else if (difficulty === "Medium") {
+    if (percentage >= 90) {
+      title = "Great Job!";
+      message =
+        "You are handling Medium questions confidently. Try Advanced to challenge yourself.";
+    } else if (percentage >= 60) {
+      title = "Nice Effort!";
+      message =
+        "Review your mistakes and aim for higher accuracy.";
+    } else {
+      title = "Don't Give Up!";
+      message =
+        "Revisit the basics and attempt this level again.";
+    }
+  }
+
+  // ================= ADVANCED =================
+  else if (difficulty === "Advanced") {
+    if (percentage >= 90) {
+      title = "Outstanding Performance!";
+      message =
+        "Scoring above 90% in Advanced shows exceptional understanding. You can now request more challenging questions.";
+      showRequestMoreBtn = true;
+    } else if (percentage >= 60) {
+      title = "Strong Attempt!";
+      message =
+        "You are close to mastery. Review carefully and try again.";
+    } else {
+      title = "Advanced Is Tough!";
+      message =
+        "Advanced questions need precision. Practice more and retry.";
+    }
+  }
+
+  return {
+    title,
+    message,
+    showRequestMoreBtn,
+    percentage,
+    context: {
+      difficulty,
+      percentage,
+    },
+  };
+}
+/* -----------------------------------
+   RESULT FEEDBACK + UNLOCK UI
+----------------------------------- */
+export function showResultFeedback(feedback) {
+  initializeElements();
+
+  if (!els.reviewScreen) return;
+
+  // Remove old feedback if present
+  let container = document.getElementById("result-feedback-container");
+  if (container) container.remove();
+
+  container = document.createElement("div");
+  container.id = "result-feedback-container";
+  container.className =
+    "w-full max-w-3xl mx-auto mt-6 p-5 rounded-lg border border-gray-200 bg-blue-50 text-center";
+
+  const titleEl = document.createElement("h3");
+  titleEl.className = "text-xl font-bold text-blue-800 mb-2";
+  titleEl.textContent = feedback.title || "";
+
+  const msgEl = document.createElement("p");
+  msgEl.className = "text-gray-800 mb-4";
+  msgEl.textContent = feedback.message || "";
+
+  container.appendChild(titleEl);
+  container.appendChild(msgEl);
+
+  //

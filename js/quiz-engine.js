@@ -14,6 +14,9 @@ import {
 } from "./auth-paywall.js";
 import curriculumData from "./curriculum.js";
 
+/* 🔵 NEW: result feedback helper (ADD ONLY) */
+import { getResultFeedback } from "./ui-renderer.js";
+
 // 🔥 Injected at automation time — DO NOT HARD CODE
 const CLASS_ID = "8";
 
@@ -63,44 +66,34 @@ function parseUrlParameters() {
 
   const urlClass    = params.get("class")   || CLASS_ID;
   const urlSubject  = params.get("subject") || "";
-  const urlBook     = params.get("book")    || null;   // currently unused but reserved
+  const urlBook     = params.get("book")    || null;
   const urlChapter  = params.get("chapter") || "";
   const urlTable    = params.get("table")   || params.get("topic") || "";
   let   urlDiff     = params.get("difficulty") || "Simple";
 
-  // Enforce allowed difficulty values
   const allowed = ["Simple","Medium","Advanced"];
   if (!allowed.includes(urlDiff)) urlDiff = "Simple";
 
   quizState.classId   = urlClass;
   quizState.subject   = urlSubject;
   quizState.topicSlug = urlTable;
-  quizState.difficulty = urlDiff; // EXACT casing, matches Supabase
+  quizState.difficulty = urlDiff;
 
   if (!quizState.topicSlug) {
     throw new Error("Topic/table not provided in URL");
   }
 
-  // Primary path: subject + chapter provided
   if (urlSubject && urlChapter) {
-    const chapter = urlChapter.trim();
-    const subject = urlSubject.trim();
-
     const headerTitle =
-      `Class ${quizState.classId}: ${subject} - ${chapter} Worksheet`;
-
+      `Class ${quizState.classId}: ${urlSubject.trim()} - ${urlChapter.trim()} Worksheet`;
     UI.updateHeader(headerTitle, quizState.difficulty);
     return;
   }
 
-  // Fallback path: infer from curriculum
   const match = findCurriculumMatch(quizState.topicSlug);
 
   if (!match) {
-    console.warn(`⚠ Fallback used for topic: ${quizState.topicSlug}`);
-
     quizState.subject = "General";
-
     const pretty = quizState.topicSlug
       .replace(/_/g, " ")
       .replace(/quiz/ig, "")
@@ -108,18 +101,18 @@ function parseUrlParameters() {
       .trim()
       .replace(/\b\w/g, c => c.toUpperCase());
 
-    const headerTitle =
-      `Class ${quizState.classId}: ${pretty} Worksheet`;
-    UI.updateHeader(headerTitle, quizState.difficulty);
+    UI.updateHeader(
+      `Class ${quizState.classId}: ${pretty} Worksheet`,
+      quizState.difficulty
+    );
     return;
   }
 
   quizState.subject = match.subject;
-  const chapter = match.title.replace(/quiz/ig, "").trim();
-
-  const headerTitle =
-    `Class ${quizState.classId}: ${quizState.subject} - ${chapter} Worksheet`;
-  UI.updateHeader(headerTitle, quizState.difficulty);
+  UI.updateHeader(
+    `Class ${quizState.classId}: ${quizState.subject} - ${match.title.replace(/quiz/ig, "").trim()} Worksheet`,
+    quizState.difficulty
+  );
 }
 
 // ===========================================================
@@ -179,8 +172,24 @@ async function handleSubmit() {
 
   quizState.currentQuestionIndex = 0;
   renderQuestion();
+
+  /* 🔵 NEW: feedback evaluation (ADD ONLY) */
+  const feedback = getResultFeedback({
+    score: quizState.score,
+    total: quizState.questions.length,
+    difficulty: quizState.difficulty,
+  });
+
   UI.showResults(quizState.score, quizState.questions.length);
-  UI.renderAllQuestionsForReview?.(quizState.questions, quizState.userAnswers);
+
+  /* 🔵 NEW: pass message + button visibility to UI */
+  UI.showResultFeedback?.(feedback);
+
+  UI.renderAllQuestionsForReview?.(
+    quizState.questions,
+    quizState.userAnswers
+  );
+
   UI.updateNavigation?.(0, quizState.questions.length, true);
 }
 
