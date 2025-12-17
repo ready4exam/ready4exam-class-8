@@ -1,146 +1,146 @@
-// js/ui-renderer.js 
+// js/ui-renderer.js 
 import { cleanKatexMarkers } from './utils.js';
 let els = {};
 let isInit = false;
 
 function normalizeReasonText(txt) {
-  if (!txt) return "";
-  return txt.replace(/^\s*(Reasoning|Reason|Context)\s*(\(R\))?\s*:\s*/i, "").trim();
+  if (!txt) return "";
+  return txt.replace(/^\s*(Reasoning|Reason|Context)\s*(\(R\))?\s*:\s*/i, "").trim();
 }
 /* -----------------------------------
-   ELEMENT INITIALIZATION
+   ELEMENT INITIALIZATION
 ----------------------------------- */
 export function initializeElements() {
-  if (isInit) return;
-  els = {
-    title: document.getElementById("quiz-page-title"),
-    diffBadge: document.getElementById("difficulty-display"),
-    status: document.getElementById("status-message"),
-    list: document.getElementById("question-list"),
-    counter: document.getElementById("question-counter"),
-    prevButton: document.getElementById("prev-btn"),
-    nextButton: document.getElementById("next-btn"),
-    submitButton: document.getElementById("submit-btn"),
-    reviewScreen: document.getElementById("results-screen"),
-    score: document.getElementById("score-display"),
-    authNav: document.getElementById("auth-nav-container"),
-    paywallScreen: document.getElementById("paywall-screen"),
-    paywallContent: document.getElementById("paywall-content"),
-    quizContent: document.getElementById("quiz-content"),
-    reviewContainer: document.getElementById("review-container"),
-    welcomeUser: document.getElementById("welcome-user"),
-    miniTitle: document.getElementById("quiz-title"),
-    chapterNameDisplay: document.getElementById("chapter-name-display"),
-  };
+  if (isInit) return;
+  els = {
+    title: document.getElementById("quiz-page-title"),
+    diffBadge: document.getElementById("difficulty-display"),
+    status: document.getElementById("status-message"),
+    list: document.getElementById("question-list"),
+    counter: document.getElementById("question-counter"),
+    prevButton: document.getElementById("prev-btn"),
+    nextButton: document.getElementById("next-btn"),
+    submitButton: document.getElementById("submit-btn"),
+    reviewScreen: document.getElementById("results-screen"),
+    score: document.getElementById("score-display"),
+    authNav: document.getElementById("auth-nav-container"),
+    paywallScreen: document.getElementById("paywall-screen"),
+    paywallContent: document.getElementById("paywall-content"),
+    quizContent: document.getElementById("quiz-content"),
+    reviewContainer: document.getElementById("review-container"),
+    welcomeUser: document.getElementById("welcome-user"),
+    miniTitle: document.getElementById("quiz-title"),
+    chapterNameDisplay: document.getElementById("chapter-name-display"),
+  };
 
-  if (!els.reviewContainer) {
-    const rc = document.createElement("div");
-    rc.id = "review-container";
-    rc.className = "w-full max-w-3xl text-left mb-8";
-    const resultsSection = document.getElementById("results-screen");
-    if (resultsSection)
-      resultsSection.insertBefore(rc, resultsSection.querySelector(".flex") || null);
-    els.reviewContainer = document.getElementById("review-container");
-  }
+  if (!els.reviewContainer) {
+    const rc = document.createElement("div");
+    rc.id = "review-container";
+    rc.className = "w-full max-w-3xl text-left mb-8";
+    const resultsSection = document.getElementById("results-screen");
+    if (resultsSection)
+      resultsSection.insertBefore(rc, resultsSection.querySelector(".flex") || null);
+    els.reviewContainer = document.getElementById("review-container");
+  }
 
-  isInit = true;
+  isInit = true;
 }
 /* -----------------------------------
-   STATUS MESSAGE
+   STATUS MESSAGE
 ----------------------------------- */
 export function showStatus(msg, cls = "text-gray-700") {
-  initializeElements();
-  if (!els.status) return;
-  els.status.innerHTML = msg;
-  els.status.className = `p-3 text-center font-semibold ${cls}`;
-  els.status.classList.remove("hidden");
+  initializeElements();
+  if (!els.status) return;
+  els.status.innerHTML = msg;
+  els.status.className = `p-3 text-center font-semibold ${cls}`;
+  els.status.classList.remove("hidden");
 }
 
 export function hideStatus() {
-  initializeElements();
-  if (els.status) els.status.classList.add("hidden");
+  initializeElements();
+  if (els.status) els.status.classList.add("hidden");
 }
 
 /* -----------------------------------
-   🔥 FIXED HEADER DISPLAY
+   🔥 FIXED HEADER DISPLAY
 ----------------------------------- */
 export function updateHeader(topicDisplayTitle, diff) {
-  initializeElements();
+  initializeElements();
 
-  const finalHeader = topicDisplayTitle;
+  const finalHeader = topicDisplayTitle;
 
-  if (els.miniTitle) els.miniTitle.textContent = "";
-  if (els.title) els.title.textContent = finalHeader;
-  if (els.chapterNameDisplay) {
-    els.chapterNameDisplay.textContent = finalHeader;
-    els.chapterNameDisplay.classList.remove("hidden");
-  }
-  if (els.diffBadge) {
-    els.diffBadge.textContent = `Difficulty: ${diff || "--"}`;
-    els.diffBadge.classList.remove("hidden");
-  }
+  if (els.miniTitle) els.miniTitle.textContent = "";
+  if (els.title) els.title.textContent = finalHeader;
+  if (els.chapterNameDisplay) {
+    els.chapterNameDisplay.textContent = finalHeader;
+    els.chapterNameDisplay.classList.remove("hidden");
+  }
+  if (els.diffBadge) {
+    els.diffBadge.textContent = `Difficulty: ${diff || "--"}`;
+    els.diffBadge.classList.remove("hidden");
+  }
 }
 
 /* -----------------------------------
-   AUTH UI
+   AUTH UI
 ----------------------------------- */
 export function updateAuthUI(user) {
-  initializeElements();
-  if (!els.authNav) return;
-  const welcomeEl = els.welcomeUser;
-  if (user) {
-    const name = user.displayName?.split(" ")[0] || user.email?.split("@")[0] || "Student";
-    welcomeEl.textContent = `Welcome, ${name}!`;
-    welcomeEl.classList.remove("hidden");
-    document.getElementById("logout-nav-btn")?.classList.remove("hidden");
-  } else {
-    welcomeEl.classList.add("hidden");
-    document.getElementById("logout-nav-btn")?.classList.add("hidden");
-  }
+  initializeElements();
+  if (!els.authNav) return;
+  const welcomeEl = els.welcomeUser;
+  if (user) {
+    const name = user.displayName?.split(" ")[0] || user.email?.split("@")[0] || "Student";
+    welcomeEl.textContent = `Welcome, ${name}!`;
+    welcomeEl.classList.remove("hidden");
+    document.getElementById("logout-nav-btn")?.classList.remove("hidden");
+  } else {
+    welcomeEl.classList.add("hidden");
+    document.getElementById("logout-nav-btn")?.classList.add("hidden");
+  }
 }
 
 /* -----------------------------------
-   AUTH LOADING UI
+   AUTH LOADING UI
 ----------------------------------- */
 export function showAuthLoading(message = "Signing you in — please wait...") {
-  initializeElements();
-  let overlay = document.getElementById("auth-loading-overlay");
-  if (!overlay) {
-    overlay = document.createElement("div");
-    overlay.id = "auth-loading-overlay";
-    overlay.className = "fixed inset-0 bg-white/80 flex items-center justify-center z-50";
-    overlay.innerHTML = `
-      <div class="p-6 rounded-lg shadow-lg text-center max-w-lg bg-white">
-        <div class="text-2xl font-bold mb-2">Signing in</div>
-        <div class="text-sm text-gray-700 mb-4">${message}</div>
-        <div class="w-12 h-12 mx-auto mb-1">
-          <svg class="animate-spin w-12 h-12 text-blue-600 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
-          </svg>
-        </div>
-      </div>`;
-    document.body.appendChild(overlay);
-  } else overlay.classList.remove("hidden");
+  initializeElements();
+  let overlay = document.getElementById("auth-loading-overlay");
+  if (!overlay) {
+    overlay = document.createElement("div");
+    overlay.id = "auth-loading-overlay";
+    overlay.className = "fixed inset-0 bg-white/80 flex items-center justify-center z-50";
+    overlay.innerHTML = `
+      <div class="p-6 rounded-lg shadow-lg text-center max-w-lg bg-white">
+        <div class="text-2xl font-bold mb-2">Signing in</div>
+        <div class="text-sm text-gray-700 mb-4">${message}</div>
+        <div class="w-12 h-12 mx-auto mb-1">
+          <svg class="animate-spin w-12 h-12 text-blue-600 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+          </svg>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+  } else overlay.classList.remove("hidden");
 }
 
 export function hideAuthLoading() {
-  const overlay = document.getElementById("auth-loading-overlay");
-  if (overlay) overlay.remove();
+  const overlay = document.getElementById("auth-loading-overlay");
+  if (overlay) overlay.remove();
 }
 
 /* -----------------------------------
-   VIEW CONTROL
+   VIEW CONTROL
 ----------------------------------- */
 export function showView(viewName) {
-  initializeElements();
-  const views = {
-    "quiz-content": els.quizContent,
-    "results-screen": els.reviewScreen,
-    "paywall-screen": els.paywallScreen,
-  };
-  Object.values(views).forEach(v => v?.classList.add("hidden"));
-  views[viewName]?.classList.remove("hidden");
+  initializeElements();
+  const views = {
+    "quiz-content": els.quizContent,
+    "results-screen": els.reviewScreen,
+    "paywall-screen": els.paywallScreen,
+  };
+  Object.values(views).forEach(v => v?.classList.add("hidden"));
+  views[viewName]?.classList.remove("hidden");
 }
 
 /* -----------------------------------
@@ -150,10 +150,6 @@ export function renderQuestion(q, idxOneBased, selected, submitted) {
   initializeElements();
   if (!els.list) return;
 
-  // ---------------------------
-  // Universal normalizer (safe)
-  // maps different field names from DB/backend to UI fields
-  // ---------------------------
   const mapped = {
     id: q.id,
     question_type: (q.question_type || q.type || "").toLowerCase(),
@@ -162,64 +158,32 @@ export function renderQuestion(q, idxOneBased, selected, submitted) {
     explanation: q.explanation || q.explanation_text || q.reason || "",
     correct_answer: q.correct_answer || q.correct_answer_key || q.answer || "",
     options: {
-      A: (q.options && (q.options.A || q.options.a)) || q.option_a || q.a || q.opt_a || "",
-      B: (q.options && (q.options.B || q.options.b)) || q.option_b || q.b || q.opt_b || "",
-      C: (q.options && (q.options.C || q.options.c)) || q.option_c || q.c || q.opt_c || "",
-      D: (q.options && (q.options.D || q.options.d)) || q.option_d || q.d || q.opt_d || ""
+      A: (q.options && (q.options.A || q.options.a)) || q.option_a || "",
+      B: (q.options && (q.options.B || q.options.b)) || q.option_b || "",
+      C: (q.options && (q.options.C || q.options.c)) || q.option_c || "",
+      D: (q.options && (q.options.D || q.options.d)) || q.option_d || ""
     }
   };
 
-  // use mapped object for downstream logic
   q = mapped;
+  const type = q.question_type;
 
-  const type = (q.question_type || "").toLowerCase();
-
-  /* ================== ASSERTION-REASON ================== */
+  /* ================== ASSERTION–REASON ================== */
   if (type === "ar") {
     const rawQ = cleanKatexMarkers(q.text || "");
     const rawReasonSource = cleanKatexMarkers(q.scenario_reason || q.explanation || "");
 
-    let assertion = "";
-    let reason = "";
-
-    const bothMatch = rawQ.match(
-      /Assertion\s*\(A\)\s*[:\-]?\s*(.*?)(?:Reason\s*\(R\)\s*[:\-]?\s*(.*))?$/is
-    );
-    if (bothMatch) {
-      assertion = (bothMatch[1] || "").trim();
-      if (bothMatch[2]) reason = bothMatch[2].trim();
-    }
-
-    if (!assertion) {
-      const aOnly = rawQ.match(/Assertion\s*\(A\)\s*[:\-]?\s*(.*)$/is);
-      if (aOnly) assertion = aOnly[1].trim();
-    }
-
-    if (!assertion) assertion = rawQ.trim();
-
-    if (!reason) {
-      const rInline = rawQ.match(/Reason\s*\(R\)\s*[:\-]?\s*(.*)$/is);
-      if (rInline?.[1]) reason = rInline[1].trim();
-    }
-
-    if (!reason && rawReasonSource) {
-      if (/Reason\s*\(R\)/i.test(rawReasonSource)) {
-        reason = rawReasonSource.replace(/.*Reason\s*\(R\)\s*[:\-]?\s*/i, "").trim();
-      } else {
-        reason = rawReasonSource.trim();
-      }
-    }
-
-    if (!reason) reason = "";
+    let assertion = rawQ;
+    let reason = rawReasonSource || "";
 
     const arOptionText = {
       A: "Both A and R are true and R is the correct explanation of A.",
       B: "Both A and R are true but R is not the correct explanation of A.",
       C: "A is true but R is false.",
-      D: "A is false but R is true.",
+      D: "A is false but R is true."
     };
 
-    const optionsHtml = ["A", "B", "C", "D"].map(opt => {
+    const optionsHtml = ["A","B","C","D"].map(opt => {
       const isSel = selected === opt;
       const isCorrect = submitted && q.correct_answer?.toUpperCase() === opt;
       const isWrong = submitted && isSel && !isCorrect;
@@ -231,7 +195,7 @@ export function renderQuestion(q, idxOneBased, selected, submitted) {
 
       return `
         <label class="block">
-          <input type="radio" name="q-${q.id}" value="${opt}" class="hidden" ${isSel ? "checked" : ""} ${submitted ? "disabled" : ""}>
+          <input type="radio" name="q-${q.id}" value="${opt}" class="hidden" ${isSel?"checked":""} ${submitted?"disabled":""}>
           <div class="${cls}">
             <span class="font-bold mr-3">${opt})</span>
             <span class="text-gray-800">${arOptionText[opt]}</span>
@@ -242,62 +206,24 @@ export function renderQuestion(q, idxOneBased, selected, submitted) {
     els.list.innerHTML = `
       <div class="space-y-5">
         <p class="text-lg font-bold text-gray-900">
-          Q${idxOneBased}:
-          <span class="font-bold"> Assertion (A):</span> ${assertion}
+          Q${idxOneBased}: <span class="font-bold">Assertion (A):</span> ${assertion}
         </p>
         <p class="text-md text-gray-900">
           <span class="font-bold">Reason (R):</span> ${reason}
         </p>
-        <div class="mt-3 text-gray-900 font-semibold">
-          Mark the correct choice as:
-        </div>
-        <div class="space-y-3">
-          ${optionsHtml}
-        </div>
+        <div class="mt-3 font-semibold text-gray-900">Mark the correct choice:</div>
+        <div class="space-y-3">${optionsHtml}</div>
       </div>`;
-
-    if (els.counter)
-      els.counter.textContent = `${idxOneBased} / ${els._total || "--"}`;
     return;
   }
 
   /* ================== CASE BASED ================== */
   if (type === "case") {
-    const rawQ = cleanKatexMarkers(q.text || "");
-    const rawScenario = cleanKatexMarkers(q.scenario_reason || "");
+    const scenario = cleanKatexMarkers(q.scenario_reason || "");
+    const question = cleanKatexMarkers(q.text || "");
 
-    const isQuestionLike = (txt) => {
-      if (!txt) return false;
-      return /[?]/.test(txt) ||
-             /\bBased on\b/i.test(txt) ||
-             /\banswer\b/i.test(txt) ||
-             /\bfollowing\b/i.test(txt) ||
-             /\b1\./.test(txt) ||
-             /\b2\./.test(txt);
-    };
-
-    let scenarioText = "";
-    let questionText = "";
-
-    if (rawScenario && isQuestionLike(rawScenario)) {
-      scenarioText = rawQ;
-      questionText = rawScenario;
-    } else if (rawScenario) {
-      scenarioText = rawScenario;
-      questionText = rawQ;
-    } else {
-      const splitMatch = rawQ.match(/(Based on.*|Considering.*|Answer the following.*)/is);
-      if (splitMatch && splitMatch.index > 0) {
-        scenarioText = rawQ.slice(0, splitMatch.index).trim();
-        questionText = splitMatch[1].trim();
-      } else {
-        scenarioText = rawQ;
-        questionText = "";
-      }
-    }
-
-    const optionsHtml = ["A", "B", "C", "D"].map(opt => {
-      const txt = cleanKatexMarkers(q.options?.[opt] || "");
+    const optionsHtml = ["A","B","C","D"].map(opt => {
+      const txt = cleanKatexMarkers(q.options[opt] || "");
       const isSel = selected === opt;
       const isCorrect = submitted && q.correct_answer?.toUpperCase() === opt;
       const isWrong = submitted && isSel && !isCorrect;
@@ -309,7 +235,7 @@ export function renderQuestion(q, idxOneBased, selected, submitted) {
 
       return `
         <label class="block">
-          <input type="radio" name="q-${q.id}" value="${opt}" class="hidden" ${isSel ? "checked" : ""} ${submitted ? "disabled" : ""}>
+          <input type="radio" name="q-${q.id}" value="${opt}" class="hidden" ${isSel?"checked":""} ${submitted?"disabled":""}>
           <div class="${cls}">
             <span class="font-bold mr-3">${opt}.</span>
             <span class="text-gray-800">${txt}</span>
@@ -317,47 +243,37 @@ export function renderQuestion(q, idxOneBased, selected, submitted) {
         </label>`;
     }).join("");
 
-    let reasonRaw = q.explanation || "";
-    const reason = normalizeReasonText(cleanKatexMarkers(reasonRaw));
-    const submittedExplanationHtml =
-      submitted && reason
-        ? `<div class="mt-3 p-3 bg-gray-50 rounded text-gray-700 border border-gray-100"><b>Explanation:</b> ${reason}</div>`
-        : "";
+    const reason = normalizeReasonText(cleanKatexMarkers(q.explanation || ""));
+    const explanationHtml = submitted && reason
+      ? `<div class="mt-3 p-3 bg-gray-50 border border-gray-100 rounded text-gray-700"><b>Explanation:</b> ${reason}</div>`
+      : "";
 
     els.list.innerHTML = `
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
         <div class="p-4 bg-gray-50 rounded-lg border border-gray-200 max-h-64 overflow-y-auto">
           <h3 class="font-semibold mb-2 text-gray-900">Scenario</h3>
-          <p class="text-gray-800 text-sm md:text-base whitespace-pre-line">${scenarioText}</p>
+          <p class="text-gray-800 whitespace-pre-line">${scenario}</p>
         </div>
         <div class="space-y-4">
-          <p class="text-lg font-bold text-gray-900">Q${idxOneBased}: ${questionText || "Based on the scenario, answer this question."}</p>
+          <p class="text-lg font-bold text-gray-900">Q${idxOneBased}: ${question}</p>
           <div class="space-y-3">${optionsHtml}</div>
-          ${submittedExplanationHtml}
+          ${explanationHtml}
         </div>
       </div>`;
-
-    if (els.counter)
-      els.counter.textContent = `${idxOneBased} / ${els._total || "--"}`;
     return;
   }
 
   /* ================== NORMAL MCQ ================== */
   const qText = cleanKatexMarkers(q.text || "");
-  let reasonRaw = q.explanation || q.scenario_reason || "";
-  const reason = normalizeReasonText(cleanKatexMarkers(reasonRaw));
-  const label = type === "case" ? "Context" : "Reasoning (R)";
+  const reason = normalizeReasonText(cleanKatexMarkers(q.explanation || q.scenario_reason || ""));
+  const reasonHtml = reason && !submitted
+    ? `<p class="text-gray-700 mt-2 mb-3">Reasoning (R): ${reason}</p>` : "";
 
-  const reasonHtml =
-    (type === "ar" || type === "case") && reason && !submitted
-      ? `<p class="text-gray-700 mt-2 mb-3">${label}: ${reason}</p>` : "";
+  const submittedExplanationHtml = submitted && reason
+    ? `<div class="mt-3 p-3 bg-gray-50 border border-gray-100 rounded text-gray-700"><b>Reasoning (R):</b> ${reason}</div>` : "";
 
-  const submittedExplanationHtml =
-    submitted && (type === "ar" || type === "case") && reason
-      ? `<div class="mt-3 p-3 bg-gray-50 rounded text-gray-700 border border-gray-100"><b>${label}:</b> ${reason}</div>` : "";
-
-  const optionsHtml = ["A", "B", "C", "D"].map(opt => {
-    const txt = cleanKatexMarkers(q.options?.[opt] || "");
+  const optionsHtml = ["A","B","C","D"].map(opt => {
+    const txt = cleanKatexMarkers(q.options[opt] || "");
     const isSel = selected === opt;
     const isCorrect = submitted && q.correct_answer?.toUpperCase() === opt;
     const isWrong = submitted && isSel && !isCorrect;
@@ -384,48 +300,45 @@ export function renderQuestion(q, idxOneBased, selected, submitted) {
       <div class="space-y-3">${optionsHtml}</div>
       ${submittedExplanationHtml}
     </div>`;
-
-  if (els.counter)
-    els.counter.textContent = `${idxOneBased} / ${els._total || "--"}`;
 }
 
 /* -----------------------------------
-   ANSWER LISTENERS
+   ANSWER LISTENERS
 ----------------------------------- */
 export function attachAnswerListeners(handler) {
-  initializeElements();
-  if (!els.list) return;
-  if (els._listener) els.list.removeEventListener("change", els._listener);
+  initializeElements();
+  if (!els.list) return;
+  if (els._listener) els.list.removeEventListener("change", els._listener);
 
-  const listener = (e) => {
-    if (e.target?.type === "radio" && e.target.name.startsWith("q-")) {
-      handler(e.target.name.substring(2), e.target.value);
-    }
-  };
-  els.list.addEventListener("change", listener);
-  els._listener = listener;
+  const listener = (e) => {
+    if (e.target?.type === "radio" && e.target.name.startsWith("q-")) {
+      handler(e.target.name.substring(2), e.target.value);
+    }
+  };
+  els.list.addEventListener("change", listener);
+  els._listener = listener;
 }
 
 /* -----------------------------------
-   NAVIGATION
+   NAVIGATION
 ----------------------------------- */
 export function updateNavigation(index, total, submitted) {
-  initializeElements();
-  els._total = total;
-  const show = (btn, cond) => btn && btn.classList.toggle("hidden", !cond);
-  show(els.prevButton, index > 0);
-  show(els.nextButton, index < total - 1);
-  show(els.submitButton, !submitted && index === total - 1);
-  if (els.counter) els.counter.textContent = `${index + 1} / ${total}`;
+  initializeElements();
+  els._total = total;
+  const show = (btn, cond) => btn && btn.classList.toggle("hidden", !cond);
+  show(els.prevButton, index > 0);
+  show(els.nextButton, index < total - 1);
+  show(els.submitButton, !submitted && index === total - 1);
+  if (els.counter) els.counter.textContent = `${index + 1} / ${total}`;
 }
 
 /* -----------------------------------
-   RESULTS + REVIEW (CLEAN - NO DUPLICATION)
+   RESULTS + REVIEW (CLEAN - NO DUPLICATION)
 ----------------------------------- */
 export function showResults(score, total) {
-  initializeElements();
-  if (els.score) els.score.textContent = `${score} / ${total}`;
-  showView("results-screen");
+  initializeElements();
+  if (els.score) els.score.textContent = `${score} / ${total}`;
+  showView("results-screen");
 }
 
 export function renderAllQuestionsForReview(questions, userAnswers = {}) {
@@ -454,16 +367,16 @@ export function renderAllQuestionsForReview(questions, userAnswers = {}) {
       uaOpt.toUpperCase() === caOpt.toUpperCase();
 
     return `
-      <div class="mb-6 p-4 bg-white rounded-lg border border-gray-100 shadow-sm">
-        <p class="font-bold text-lg mb-1">Q${i + 1}: ${txt}</p>
-        ${reason ? `<p class="text-gray-700 mb-2">${label}: ${reason}</p>` : ""}
-        <p>
+      <div class="mb-5 p-3 bg-white rounded-lg border border-gray-100 shadow-sm"> // Reduced mb-6 p-4
+        <p class="font-bold text-base mb-1">Q${i + 1}: ${txt}</p> // Reduced text-lg to text-base
+        ${reason ? `<p class="text-gray-700 mb-1">${label}: ${reason}</p>` : ""} // Reduced mb-2 to mb-1
+        <p class="text-sm"> // Added text-sm
           Your Answer:
           <span class="${correct ? "text-green-600" : "text-red-600"} font-semibold">
             ${uaOpt ? `(${uaOpt}) ${uaText}` : "Not Attempted"}
           </span>
         </p>
-        <p>
+        <p class="text-sm"> // Added text-sm
           Correct Answer:
           <span class="text-green-700 font-semibold">
             (${caOpt}) ${caText}
@@ -476,104 +389,175 @@ export function renderAllQuestionsForReview(questions, userAnswers = {}) {
   showView("results-screen");
 }
 /* -----------------------------------
+ /* -----------------------------------
    RESULT FEEDBACK DECISION ENGINE
+   (Implements Rules 1, 2, 3, 4, 5)
 ----------------------------------- */
 export function getResultFeedback({ score, total, difficulty }) {
-  const percentage = total > 0 ? Math.round((score / total) * 100) : 0;
+  // Normalize difficulty (robust against UI labels)
+  const normalizedDifficulty =
+    (difficulty || "").toLowerCase().includes("advanced") ? "Advanced" :
+    (difficulty || "").toLowerCase().includes("medium")   ? "Medium" :
+    (difficulty || "").toLowerCase().includes("simple")   ? "Simple" :
+    "";
+
+  // Score normalization
+  const percentage = total > 0
+    ? Math.round((score / total) * 100)
+    : 0;
 
   let title = "";
   let message = "";
+  let curiosity = "";
   let showRequestMoreBtn = false;
 
-  // ================= SIMPLE =================
-  if (difficulty === "Simple") {
+  /* ================= SIMPLE ================= */
+  if (normalizedDifficulty === "Simple") {
     if (percentage >= 90) {
       title = "Excellent Work!";
       message =
         "You have mastered the basics. Try Medium difficulty to strengthen your understanding.";
+      curiosity =
+        "You are closer to something deeper — higher levels unlock challenges most learners never see.";
     } else if (percentage >= 60) {
       title = "Good Progress!";
       message =
         "You are doing well. Practice a bit more to improve your accuracy.";
+      curiosity =
+        "There is more ahead. Precision is the key that opens the next door.";
     } else {
       title = "Keep Practicing!";
       message =
         "Focus on understanding the concepts and try again.";
+      curiosity =
+        "Every expert starts here. Consistency unlocks what is hidden.";
     }
   }
 
-  // ================= MEDIUM =================
-  else if (difficulty === "Medium") {
+  /* ================= MEDIUM ================= */
+  else if (normalizedDifficulty === "Medium") {
     if (percentage >= 90) {
       title = "Great Job!";
       message =
         "You are handling Medium questions confidently. Try Advanced to challenge yourself.";
+      curiosity =
+        "Advanced mastery is different — something exclusive unlocks only at the top.";
     } else if (percentage >= 60) {
       title = "Nice Effort!";
       message =
         "Review your mistakes and aim for higher accuracy.";
+      curiosity =
+        "You are approaching a hidden threshold. Accuracy reveals it.";
     } else {
       title = "Don't Give Up!";
       message =
         "Revisit the basics and attempt this level again.";
+      curiosity =
+        "Progress here determines what becomes visible next.";
     }
   }
 
-  // ================= ADVANCED =================
-  else if (difficulty === "Advanced") {
+  /* ================= ADVANCED ================= */
+  else if (normalizedDifficulty === "Advanced") {
     if (percentage >= 90) {
       title = "Outstanding Performance!";
       message =
-        "Scoring above 90% in Advanced shows exceptional understanding. You can now request more challenging questions.";
+        "Scoring above 90% in Advanced shows exceptional understanding.";
+      curiosity =
+        "You have crossed the mastery line. New challenges are now unlocked.";
       showRequestMoreBtn = true;
     } else if (percentage >= 60) {
       title = "Strong Attempt!";
       message =
         "You are close to mastery. Review carefully and try again.";
+      curiosity =
+        "Something unlocks at 90%. Precision is the final gate.";
     } else {
       title = "Advanced Is Tough!";
       message =
         "Advanced questions need precision. Practice more and retry.";
+      curiosity =
+        "Only a few unlock what lies beyond this level.";
     }
   }
 
   return {
     title,
     message,
+    curiosity,
     showRequestMoreBtn,
     percentage,
     context: {
-      difficulty,
+      difficulty: normalizedDifficulty,
       percentage,
     },
   };
 }
+
 /* -----------------------------------
    RESULT FEEDBACK + UNLOCK UI
 ----------------------------------- */
-export function showResultFeedback(feedback) {
+export function showResultFeedback(feedback, requestMoreHandler) {
   initializeElements();
-
   if (!els.reviewScreen) return;
+
+  // Guard: do not render empty feedback
+  if (!feedback?.title && !feedback?.message) return;
 
   // Remove old feedback if present
   let container = document.getElementById("result-feedback-container");
   if (container) container.remove();
 
+  // Create container
   container = document.createElement("div");
   container.id = "result-feedback-container";
   container.className =
     "w-full max-w-3xl mx-auto mt-6 p-5 rounded-lg border border-gray-200 bg-blue-50 text-center";
 
+  // Title
   const titleEl = document.createElement("h3");
   titleEl.className = "text-xl font-bold text-blue-800 mb-2";
-  titleEl.textContent = feedback.title || "";
-
-  const msgEl = document.createElement("p");
-  msgEl.className = "text-gray-800 mb-4";
-  msgEl.textContent = feedback.message || "";
-
+  titleEl.textContent = feedback.title;
   container.appendChild(titleEl);
+
+  // Message
+  const msgEl = document.createElement("p");
+  msgEl.className = "text-gray-800 mb-2";
+  msgEl.textContent = feedback.message;
   container.appendChild(msgEl);
+
+  // Curiosity (highlighted, special)
+  if (feedback.curiosity) {
+    const curiosityEl = document.createElement("p");
+    curiosityEl.className =
+      "text-sm text-indigo-700 font-semibold italic mb-4";
+    curiosityEl.textContent = feedback.curiosity;
+    container.appendChild(curiosityEl);
+  }
+
+  // Unlock button (Advanced ≥ 90%)
+  if (feedback.showRequestMoreBtn) {
+    const btn = document.createElement("button");
+    btn.id = "request-more-btn";
+    btn.className =
+      "bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-5 rounded transition duration-200";
+    btn.textContent = "Request More Challenging Questions";
+
+    if (requestMoreHandler) {
+      btn.addEventListener("click", () =>
+        requestMoreHandler(feedback.context)
+      );
+    }
+
+    container.appendChild(btn);
+  }
+
+  // Insert feedback above results buttons
+  const resultsSection = document.getElementById("results-screen");
+  if (resultsSection) {
+    resultsSection.insertBefore(
+      container,
+      resultsSection.querySelector(".flex") || null
+    );
+  }
 }
-  //
