@@ -274,8 +274,15 @@ function attachDomEvents() {
 
     if (b.id === "logout-nav-btn") return signOut();
 
-    if (b.id === "back-to-chapters-btn")
-      location.href = "chapter-selection.html";
+    // ⭐ FIX APPLIED: Construct the URL with the quizState.subject parameter
+    if (b.id === "back-to-chapters-btn") {
+      if (quizState.subject) {
+        location.href = `chapter-selection.html?subject=${quizState.subject}`;
+      } else {
+        // Fallback
+        location.href = "chapter-selection.html";
+      }
+    }
   });
 }
 
