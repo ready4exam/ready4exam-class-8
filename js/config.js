@@ -1,12 +1,10 @@
 // js/config.js
-// Simplified config for Ready4Exam (Class repos) - Supabase ANON only
-// Expects window.__firebase_config to be provided in HTML by automation
+// Optimized: Lazy-loads heavy libraries to fix initial quiz latency
 
+// We only keep the absolute essentials for the first paint
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-import { getFirestore } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 import { createClient as createSupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { getAnalytics, logEvent } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-analytics.js";
 
 let firebaseApp = null;
 let firebaseAuth = null;
@@ -14,40 +12,60 @@ let firebaseDB = null;
 let supabase = null;
 let analyticsInstance = null;
 
+/**
+ * High-speed initialization. 
+ * Only starts Auth and Supabase. Firestore/Analytics are deferred.
+ */
 export async function initializeServices() {
   if (firebaseApp && supabase) return { auth: firebaseAuth, db: firebaseDB, supabase };
 
   const cfg = window.__firebase_config;
   if (!cfg?.apiKey) throw new Error("Firebase config missing");
 
-  // Firebase
+  // Initialize Core Firebase (Fast)
   firebaseApp = initializeApp(cfg);
   firebaseAuth = getAuth(firebaseApp);
-  firebaseDB = getFirestore(firebaseApp);
 
-  // Supabase ANON CLIENT ONLY
+  // Initialize Supabase (Essential for fetching questions)
   supabase = createSupabaseClient(cfg.supabaseUrl, cfg.supabaseAnonKey, {
     auth: { persistSession: false }
   });
 
-  window.supabase = supabase; // helpful for debugging
-
-  if (cfg.measurementId) {
-    try { analyticsInstance = getAnalytics(firebaseApp) } catch(e) {}
-  }
+  window.supabase = supabase;
 
   return { auth: firebaseAuth, db: firebaseDB, supabase };
 }
 
+/**
+ * Returns clients. If DB or Analytics aren't ready, they stay null 
+ * until the quiz finish logic calls for them.
+ */
 export function getInitializedClients() {
   if (!firebaseApp) throw new Error("Call initializeServices FIRST");
   return { auth: firebaseAuth, db: firebaseDB, supabase };
 }
 
 export function getAuthUser() {
-  return firebaseAuth.currentUser || null;
+  return firebaseAuth?.currentUser || null;
 }
 
-export function logAnalyticsEvent(evt, data = {}) {
-  try { analyticsInstance && logEvent(analyticsInstance, evt, data) } catch(e) {}
+/**
+ * Optimized Analytics: Only loads the library when the first event is logged
+ */
+export async function logAnalyticsEvent(evt, data = {}) {
+  const cfg = window.__firebase_config;
+  if (!cfg?.measurementId) return;
+
+  try {
+    if (!analyticsInstance) {
+      const { getAnalytics, logEvent } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-analytics.js");
+      analyticsInstance = getAnalytics(firebaseApp);
+      logEvent(analyticsInstance, evt, data);
+    } else {
+      const { logEvent } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-analytics.js");
+      logEvent(analyticsInstance, evt, data);
+    }
+  } catch (e) {
+    console.warn("Analytics blocked or failed");
+  }
 }

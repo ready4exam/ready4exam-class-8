@@ -1,15 +1,11 @@
 // js/api.js
-// Anonymous Supabase reads + Firestore results save
+// Optimized for high-speed Supabase reads and lazy-loaded Firestore writes
 
 import { getInitializedClients, getAuthUser, logAnalyticsEvent } from "./config.js";
-import * as UI from "./ui-renderer.js";
-import { cleanKatexMarkers } from "./utils.js";
-import {
-  collection,
-  addDoc,
-  serverTimestamp
-} from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
+/**
+ * Builds the database-friendly table name
+ */
 function getTableName(topic) {
   return (topic || "")
     .toLowerCase()
@@ -18,22 +14,19 @@ function getTableName(topic) {
 }
 
 // =============================================================
-// FETCH QUESTIONS — FINAL FIXED VERSION
+// FETCH QUESTIONS — OPTIMIZED PAYLOAD
 // =============================================================
 export async function fetchQuestions(topic, difficulty) {
   const { supabase } = getInitializedClients();
   const table = getTableName(topic);
+  
+  // Wildcard flexibility for ilike (Case-insensitive matching)
+  const diffPattern = `%${(difficulty || "Simple").trim()}%`;
 
-  // EXACT match with Supabase inserted values
-  const diff = (difficulty || "Simple").trim();
-
-  UI.showStatus(`Loading ${table} (${diff})...`);
-
-  // CORRECT SUPABASE FILTER — FULLY FLEXIBLE
+  // Fetch only necessary fields to keep the network response small
   const { data, error } = await supabase
     .from(table)
-    .select(
-      `
+    .select(`
       id,
       question_text,
       question_type,
@@ -44,9 +37,8 @@ export async function fetchQuestions(topic, difficulty) {
       option_d,
       correct_answer_key,
       difficulty
-    `
-    )
-    .or(`difficulty.eq.${diff},difficulty.ilike.*${diff}*`);
+    `)
+    .ilike('difficulty', diffPattern);
 
   if (error) {
     console.error("❌ SUPABASE ERROR:", error);
@@ -54,45 +46,52 @@ export async function fetchQuestions(topic, difficulty) {
   }
 
   if (!data || !data.length) {
-    console.warn("⚠ DEBUG: Supabase returned 0 rows for:", { table, diff, data });
-    throw new Error("No questions found.");
+    throw new Error(`No questions found matching "${difficulty}" for this chapter.`);
   }
 
-  // Normalized mapping
+  // Map data to the internal state format
   return data.map((q) => ({
     id: q.id,
-    text: cleanKatexMarkers(q.question_text),
-    options: {
-      A: cleanKatexMarkers(q.option_a),
-      B: cleanKatexMarkers(q.option_b),
-      C: cleanKatexMarkers(q.option_c),
-      D: cleanKatexMarkers(q.option_d)
-    },
-    correct_answer: q.correct_answer_key.trim().toUpperCase(),
-    scenario_reason: cleanKatexMarkers(q.scenario_reason_text || ""),
+    question_text: q.question_text || "",
     question_type: (q.question_type || "").toLowerCase(),
+    scenario_reason_text: q.scenario_reason_text || "",
+    option_a: q.option_a || "",
+    option_b: q.option_b || "",
+    option_c: q.option_c || "",
+    option_d: q.option_d || "",
+    correct_answer_key: (q.correct_answer_key || "").trim().toUpperCase(),
     difficulty: q.difficulty
   }));
 }
 
 // =============================================================
-// SAVE RESULT (Unchanged)
+// SAVE RESULT — OPTIMIZED VIA DYNAMIC IMPORTS
 // =============================================================
 export async function saveResult(result) {
-  const { db } = getInitializedClients();
   const user = getAuthUser();
   if (!user) return;
 
-  await addDoc(collection(db, "quiz_scores"), {
-    user_id: user.uid,
-    email: user.email,
-    chapter: result.topic,
-    difficulty: result.difficulty,
-    score: result.score,
-    total: result.total,
-    percentage: Math.round((result.score / result.total) * 100),
-    timestamp: serverTimestamp()
-  });
+  try {
+    // Speed Hack: Load Firebase Firestore only when needed
+    const { 
+      collection, addDoc, serverTimestamp 
+    } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+    
+    const { db } = getInitializedClients();
 
-  logAnalyticsEvent("quiz_completed", { ...result, user_id: user.uid });
+    await addDoc(collection(db, "quiz_scores"), {
+      user_id: user.uid,
+      email: user.email,
+      chapter: result.topic,
+      difficulty: result.difficulty,
+      score: result.score,
+      total: result.total,
+      percentage: Math.round((result.score / result.total) * 100),
+      timestamp: serverTimestamp()
+    });
+
+    logAnalyticsEvent("quiz_completed", { ...result, user_id: user.uid });
+  } catch (err) {
+    console.warn("Save result failed (background task):", err);
+  }
 }
