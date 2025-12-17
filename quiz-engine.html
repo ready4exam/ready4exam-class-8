@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <title>Ready4Exam | Quiz Engine — Class 8</title>
 
-  <!-- Tailwind + Fonts -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -31,7 +30,6 @@
 
 <body class="bg-cbse-light min-h-screen w-full flex flex-col">
 
-<!-- HEADER -->
 <header class="bg-cbse-blue shadow-md py-4 px-6 flex justify-between items-center">
   <div class="flex items-center space-x-4">
     <a href="index.html"
@@ -59,11 +57,9 @@
 </header>
 
 
-<!-- STATUS MESSAGE -->
 <div id="status-message" class="text-center p-6 font-semibold text-blue-700 hidden"></div>
 
 
-<!-- PAYWALL SCREEN -->
 <div id="paywall-screen" class="flex flex-col items-center justify-center flex-grow p-12 hidden">
   <div class="bg-white rounded-xl p-10 shadow-xl border text-center max-w-md">
     <h2 class="text-2xl font-bold text-gray-800 mb-4">Sign in to Continue</h2>
@@ -76,7 +72,6 @@
 </div>
 
 
-<!-- QUIZ CONTENT -->
 <main id="quiz-content" class="hidden flex flex-col items-center max-w-4xl mx-auto px-4 py-8">
   <div id="question-list" class="w-full space-y-6 mb-8"></div>
 
@@ -91,7 +86,6 @@
 </main>
 
 
-<!-- RESULTS SCREEN -->
 <section id="results-screen" class="hidden flex flex-col items-center text-center py-10 px-6">
   <h2 class="text-3xl font-extrabold text-green-600 mb-4">Quiz Completed!</h2>
   <p class="text-lg text-gray-700 mb-3">Your Final Score:</p>
@@ -103,20 +97,18 @@
       <button onclick="changeDifficulty('Advanced')" class="px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700">Advanced</button>
   </div>
 
-  <button id="go-back-chapter-btn"
+  <button id="back-to-chapters-btn"
       class="px-7 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
       Go Back to Chapter Selection
   </button>
 </section>
 
 
-<!-- FOOTER -->
 <footer class="bg-cbse-blue text-white text-center py-6 mt-auto">
   <small>© 2025 Ready4Exam Academic Portal.</small>
 </footer>
 
 
-<!-- CHANGE DIFFICULTY -->
 <script>
 function changeDifficulty(level){
   const url = new URL(window.location.href);
@@ -126,7 +118,6 @@ function changeDifficulty(level){
 </script>
 
 
-<!-- FIREBASE INIT -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-app.js";
 const firebaseConfig = window.__firebase_config;
@@ -134,7 +125,6 @@ initializeApp(firebaseConfig);
 </script>
 
 
-<!-- AUTH -->
 <script type="module">
 import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-auth.js";
 
@@ -167,7 +157,6 @@ document.addEventListener("DOMContentLoaded", () => {
 </script>
 
 
-<!-- FIREBASE CONFIG -->
 <script>
 window.__firebase_config = {
   apiKey:"AIzaSyAXdKiYRxBKAj280YcNuNwlKKDp85xpOWQ",
@@ -181,7 +170,6 @@ window.__firebase_config = {
 };
 </script>
 
-<!-- APP SCRIPTS -->
 <script type="module" src="./js/config.js"></script>
 <script type="module" src="./js/auth-paywall.js"></script>
 <script type="module" src="./js/api.js"></script>
