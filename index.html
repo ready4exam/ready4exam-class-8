@@ -26,99 +26,128 @@ tailwind.config = {
 <script src="https://unpkg.com/lucide@latest"></script>
 
 <style>
-body{margin:0;background:#eef3fa;font-family:'Inter',sans-serif;overflow-x:hidden;}
-.subject-card{width:100%;background:white;padding:1.4rem 1rem;border-radius:18px;
-  border:1px solid rgba(0,0,0,.05);box-shadow:0 6px 18px rgba(0,0,0,.07);
-  transition:.35s;cursor:pointer;}
-.subject-card:hover{transform:translateY(-6px) scale(1.02);box-shadow:0 12px 32px rgba(0,0,0,.14);}
+body{margin:0;background:#f8fafc;font-family:'Inter',sans-serif;overflow-x:hidden;}
+.subject-card{width:100%;background:white;padding:1.6rem 1.2rem;border-radius:20px;
+  border:1px solid rgba(0,0,0,.04);box-shadow:0 4px 12px rgba(0,0,0,.03);
+  transition:.3s cubic-bezier(0.4, 0, 0.2, 1);cursor:pointer;}
+.subject-card:hover{transform:translateY(-5px);box-shadow:0 15px 30px rgba(19,59,106,.12);border-color:#133b6a;}
 .card-header{display:flex;align-items:center;gap:.9rem;margin-bottom:.9rem;}
-.card-title{font-size:1.2rem;font-weight:800;color:#0f172a;}
-.card-description{font-size:.95rem;color:#475569;line-height:1.45rem;}
-.card-button{padding:.65rem 1.4rem;font-size:.95rem;font-weight:600;border-radius:12px;color:white;transition:.3s}
-.science{background:#16a34a;} .commerce{background:#1d4ed8;} .arts{background:#9333ea;}
-.glass-nav{position:sticky;top:0;z-index:50;backdrop-filter:blur(12px);background:rgba(19,59,106,.92);box-shadow:0 0 25px rgba(0,0,0,.18);}
-.fade-in{animation:fade .7s ease forwards;opacity:0;}@keyframes fade{to{opacity:1}}
+.card-title{font-size:1.25rem;font-weight:800;color:#0f172a;}
+.card-description{font-size:.95rem;color:#64748b;line-height:1.5rem;}
+.card-button{padding:.7rem 1.5rem;font-size:.9rem;font-weight:700;border-radius:12px;color:white;transition:.3s;width:100%;}
+.science{background:#059669;} .commerce{background:#2563eb;} .arts{background:#7c3aed;}
+.glass-nav{position:sticky;top:0;z-index:50;backdrop-filter:blur(16px);background:rgba(19,59,106,.95);border-bottom:1px solid rgba(255,255,255,0.1);}
+.fade-in{animation:fade .6s ease-out forwards;opacity:0;}@keyframes fade{to{opacity:1}}
 .quote-card{
-  background:white; border-left:8px solid #1e3a8a;
-  border-radius:12px; padding:18px 22px; margin-top:35px;
-  font-size:1.05rem; color:#334155; line-height:1.55rem;
-  box-shadow:0 8px 22px rgba(0,0,0,.12);
+  background:linear-gradient(to right, #ffffff, #f1f5f9); border-left:6px solid #ffbe0b;
+  border-radius:16px; padding:24px; margin-top:40px;
+  font-size:1.1rem; color:#334155; font-weight:500;
+  box-shadow:0 10px 25px rgba(0,0,0,.05);
 }
 .hero{
-  background:var(--grad);
-  background-image:linear-gradient(to right, #0f172a,#1e3a8a,#22c55e);
-  color:white; padding:55px 18px;border-radius:20px;margin-bottom:40px;
-  box-shadow:0 12px 35px rgba(0,0,0,.22);
+  background-image:linear-gradient(135deg, #0f172a 0%, #1e3a8a 60%, #16a34a 100%);
+  color:white; padding:60px 24px;border-radius:24px;margin-bottom:48px;
+  box-shadow:0 20px 40px rgba(15,23,42,.25);
+}
+.contact-card{
+  transition: all 0.3s ease;
+  border: 1px solid #e2e8f0;
+}
+.contact-card:hover{
+  border-color: #133b6a;
+  background-color: #f0f9ff;
 }
 </style>
 </head>
 
 <body class="flex flex-col min-h-screen">
 
-
-<header class="glass-nav w-full py-4 px-5">
-  <h1 class="text-2xl font-extrabold text-gold tracking-wide">Ready4<span class="text-white">Exam</span></h1>
-  <p class="text-white text-sm opacity-85 italic mt-1 ml-1">Learn • Practice • Grow Strong — Every Day.</p>
+<header class="glass-nav w-full py-5 px-6">
+  <div class="max-w-[1100px] mx-auto flex flex-col md:flex-row md:items-center justify-between">
+    <div>
+      <h1 class="text-2xl font-black text-gold tracking-tight">Ready4<span class="text-white">Exam</span></h1>
+      <p class="text-white text-xs opacity-80 font-medium tracking-wide uppercase mt-0.5">Academic Excellence Portal</p>
+    </div>
+    <div class="hidden md:block text-white text-sm opacity-70 italic font-light">
+      Learn • Practice • Grow Strong
+    </div>
+  </div>
 </header>
 
+<main class="flex-grow w-full max-w-[1100px] mx-auto px-5 py-12 fade-in">
 
-<main class="flex-grow w-full max-w-[1050px] mx-auto px-4 py-10 fade-in">
+  <section class="hero text-center">
+    <span class="bg-gold/20 text-gold px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest mb-4 inline-block">2025 Academic Session</span>
+    <h2 class="text-3xl md:text-5xl font-black tracking-tight mb-4">CBSE Class 8 Hub</h2>
+    <p id="class-note" class="text-base md:text-xl max-w-2xl mx-auto opacity-90 font-medium leading-relaxed"></p>
+  </section>
 
-<!-- 🔥 Hero Welcome -->
-<section class="hero text-center leading-relaxed">
-  <h2 class="text-3xl md:text-4xl font-extrabold tracking-wide">CBSE Class 8 Learning Hub</h2>
-  <p id="class-note" class="mt-4 text-base md:text-lg max-w-2xl mx-auto opacity-95"></p>
-</section>
+  <div id="stream-section" class="grid grid-cols-1 md:grid-cols-3 gap-8 hidden">
+    <div onclick="showSubjects('Science')" class="subject-card group">
+      <div class="card-header"><i data-lucide="flask-conical" class="text-emerald-600 h-10 w-10"></i><h3 class="card-title">Science</h3></div>
+      <p class="card-description">Master Physics, Chemistry, Biology, and Advanced Mathematics.</p>
+      <div class="mt-6"><button class="card-button science shadow-lg shadow-emerald-900/20">Explore Subjects</button></div>
+    </div>
 
+    <div onclick="showSubjects('Commerce')" class="subject-card group">
+      <div class="card-header"><i data-lucide="briefcase" class="text-blue-600 h-10 w-10"></i><h3 class="card-title">Commerce</h3></div>
+      <p class="card-description">Core concepts in Accountancy, Economics, and Business Studies.</p>
+      <div class="mt-6"><button class="card-button commerce shadow-lg shadow-blue-900/20">Explore Subjects</button></div>
+    </div>
 
-<!-- STREAMS FOR CLASS 11 & 12 -->
-<div id="stream-section" class="grid grid-cols-1 md:grid-cols-3 gap-6 hidden">
-
-  <div onclick="showSubjects('Science')" class="subject-card">
-    <div class="card-header"><i data-lucide="flask-conical" class="text-green-700 h-8 w-8"></i><h3 class="card-title">Science</h3></div>
-    <p class="card-description">Physics, Chemistry, Biology & Maths.</p>
-    <div class="mt-5 text-center"><button class="card-button science">Explore Subjects</button></div>
+    <div onclick="showSubjects('Humanities')" class="subject-card group">
+      <div class="card-header"><i data-lucide="landmark" class="text-purple-600 h-10 w-10"></i><h3 class="card-title">Humanities</h3></div>
+      <p class="card-description">Deep dive into History, Political Science, and Sociology.</p>
+      <div class="mt-6"><button class="card-button arts shadow-lg shadow-purple-900/20">Explore Subjects</button></div>
+    </div>
   </div>
 
-  <div onclick="showSubjects('Commerce')" class="subject-card">
-    <div class="card-header"><i data-lucide="briefcase" class="text-blue-700 h-8 w-8"></i><h3 class="card-title">Commerce</h3></div>
-    <p class="card-description">Accountancy • Economics • Business Studies.</p>
-    <div class="mt-5 text-center"><button class="card-button commerce">Explore Subjects</button></div>
+  <div id="subject-section" class="hidden mt-6 fade-in">
+    <button onclick="backToStreams()" id="back-btn" class="flex items-center gap-2 px-5 py-2.5 bg-slate-800 text-white rounded-xl mb-8 font-bold text-sm hover:bg-black transition hidden">
+      <i data-lucide="arrow-left" class="w-4 h-4"></i> Back to Streams
+    </button>
+    <h3 id="selected-stream-title" class="text-3xl font-black text-cbse-blue mb-10 border-l-8 border-gold pl-4"></h3>
+    <div id="subject-grid" class="grid gap-6 md:grid-cols-2 lg:grid-cols-3"></div>
   </div>
 
-  <div onclick="showSubjects('Humanities')" class="subject-card">
-    <div class="card-header"><i data-lucide="landmark" class="text-purple-700 h-8 w-8"></i><h3 class="card-title">Humanities / Arts</h3></div>
-    <p class="card-description">History • Pol. Science • Geography • Sociology & more.</p>
-    <div class="mt-5 text-center"><button class="card-button arts">Explore Subjects</button></div>
+  <section class="mt-20 border-t border-gray-200 pt-16">
+    <div class="text-center mb-10">
+      <h3 class="text-3xl font-black text-cbse-blue">Need Help? Contact Us</h3>
+      <p class="text-slate-500 font-medium mt-2">Reach out for doubts, feedback, or support.</p>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto">
+      <a href="mailto:support@ready4exam.com" class="contact-card flex items-center p-6 bg-white rounded-2xl shadow-sm">
+        <div class="bg-blue-100 p-4 rounded-xl text-cbse-blue">
+          <i data-lucide="mail" class="h-6 w-6"></i>
+        </div>
+        <div class="ml-5">
+          <span class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Send Email</span>
+          <span class="text-lg font-bold text-cbse-blue">support@ready4exam.com</span>
+        </div>
+      </a>
+      <a href="https://wa.me/918520977573" target="_blank" class="contact-card flex items-center p-6 bg-white rounded-2xl shadow-sm">
+        <div class="bg-green-100 p-4 rounded-xl text-green-600">
+          <i data-lucide="message-circle" class="h-6 w-6"></i>
+        </div>
+        <div class="ml-5">
+          <span class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">WhatsApp Chat</span>
+          <span class="text-lg font-bold text-cbse-blue">+91 85209 77573</span>
+        </div>
+      </a>
+    </div>
+  </section>
+
+  <div class="quote-card text-center italic">
+    "You don’t need to be perfect — just better than yesterday. One chapter at a time, one concept at a time. Keep growing." 🌱🚀
   </div>
-
-</div>
-
-
-<!-- SUBJECT LIST (Class 5–10) -->
-<div id="subject-section" class="hidden mt-10 fade-in">
-  <button onclick="backToStreams()" id="back-btn" class="px-4 py-2 bg-cbse-blue text-white rounded-lg mb-6 hidden">← Back</button>
-  <h3 id="selected-stream-title" class="text-2xl font-extrabold text-cbse-blue text-center my-4"></h3>
-  <div id="subject-grid" class="grid gap-5 md:grid-cols-2 lg:grid-cols-3"></div>
-</div>
-
-
-<!-- 🌟 Universal Growth Message -->
-<div class="quote-card text-center">
-  You don’t need to be perfect — just better than yesterday.<br/>
-  One chapter at a time, one concept at a time. Keep growing. 🌱🚀
-</div>
 
 </main>
 
-
-<footer class="bg-cbse-blue text-white text-center py-6 mt-auto">
-  <small>© 2025 Ready4Exam Academic Portal.</small>
+<footer class="bg-cbse-blue text-white/70 text-center py-10 mt-20 border-t border-white/10">
+  <p class="font-bold text-white mb-2">Ready4Exam</p>
+  <small class="block">© 2025 Ready4Exam Academic Portal. All Rights Reserved.</small>
 </footer>
 
-
-
-<!-- ================== SCRIPT ================== -->
 <script type="module">
 import { curriculum } from "./js/curriculum.js";
 
@@ -132,37 +161,35 @@ const grid=document.getElementById("subject-grid");
 const title=document.getElementById("selected-stream-title");
 const back=document.getElementById("back-btn");
 
-
 // 🔥 Class-Based Intro
 if(CLASS>=5 && CLASS<=8){
   note.innerHTML="Curiosity today becomes learning tomorrow — explore subjects & build your base.";
 } else if(CLASS===9||CLASS===10){
-  note.innerHTML="You are entering deeper concepts — consistency will turn effort into confidence.";
+  note.innerHTML="Focus on deeper concepts — consistency will turn effort into confidence.";
 } else if(CLASS===11){
   note.innerHTML="Your foundation year begins — explore your stream & build strong concepts.";
 } else if(CLASS===12){
   note.innerHTML="Your boards & future pathway start here — learn smart, revise strong.";
 }
 
-
-// Senior logic
 if(isSenior){
   streamSection.classList.remove("hidden");
 }else{
   loadSubjects();
 }
 
-
-// STREAM FLOW
 window.showSubjects=function(stream){
   streamSection.classList.add("hidden");
   subjectSection.classList.remove("hidden");
   back.classList.remove("hidden");
-  title.textContent=`${stream} Stream — Subjects`;
+  title.textContent=`${stream} Stream Subjects`;
   populateSubjects(stream);
 };
 
-window.backToStreams=()=>{subjectSection.classList.add("hidden");streamSection.classList.remove("hidden");};
+window.backToStreams=()=>{
+  subjectSection.classList.add("hidden");
+  streamSection.classList.remove("hidden");
+};
 
 function loadSubjects(){
   subjectSection.classList.remove("hidden");
@@ -171,18 +198,17 @@ function loadSubjects(){
   populateSubjects();
 }
 
-// SUBJECT GRID
 function populateSubjects(stream){
   grid.innerHTML="";
   Object.keys(curriculum).forEach(sub=>{
     if(stream && !Object.values(curriculum[sub]).some(c=>Array.isArray(c)&&c.some(x=>x.section?.includes(stream)))) return;
 
     grid.innerHTML+=`
-    <a href="chapter-selection.html?subject=${encodeURIComponent(sub)}" class="subject-card">
+    <a href="chapter-selection.html?subject=${encodeURIComponent(sub)}" class="subject-card group">
       <div class="card-header"><i data-lucide="book-open" class="text-cbse-blue h-8 w-8"></i>
       <h3 class="card-title">${sub}</h3></div>
-      <p class="card-description">View chapters for ${sub}</p>
-      <div class="mt-5 text-center"><button class="card-button bg-cbse-blue">View Chapters</button></div>
+      <p class="card-description">Practice specific worksheets and mock tests for ${sub}.</p>
+      <div class="mt-6 text-center"><button class="card-button bg-cbse-blue group-hover:bg-blue-600 shadow-md">View Chapters</button></div>
     </a>`;
   });
 
