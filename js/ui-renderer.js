@@ -366,23 +366,23 @@ export function renderAllQuestionsForReview(questions, userAnswers = {}) {
       uaOpt && caOpt &&
       uaOpt.toUpperCase() === caOpt.toUpperCase();
 
-    return
-      <div class="mb-5 p-3 bg-white rounded-lg border border-gray-100 shadow-sm"> // Reduced mb-6 p-4
-        <p class="font-bold text-base mb-1">Q${i + 1}: ${txt}</p> // Reduced text-lg to text-base
-        ${reason ? `<p class="text-gray-700 mb-1">${label}: ${reason}</p>` : ""} // Reduced mb-2 to mb-1
-        <p class="text-sm"> // Added text-sm
+    return `
+      <div class="mb-5 p-3 bg-white rounded-lg border border-gray-100 shadow-sm">
+        <p class="font-bold text-base mb-1">Q${i + 1}: ${txt}</p>
+        ${reason ? `<p class="text-gray-700 mb-1">${label}: ${reason}</p>` : ""}
+        <p class="text-sm">
           Your Answer:
           <span class="${correct ? "text-green-600" : "text-red-600"} font-semibold">
             ${uaOpt ? `(${uaOpt}) ${uaText}` : "Not Attempted"}
           </span>
         </p>
-        <p class="text-sm"> // Added text-sm
+        <p class="text-sm">
           Correct Answer:
           <span class="text-green-700 font-semibold">
             (${caOpt}) ${caText}
           </span>
         </p>
-      </div>;
+      </div>`;
   }).join("");
 
   els.reviewContainer.innerHTML = html;
