@@ -16,7 +16,7 @@ const SELECTED_CLS = " border-blue-500 bg-blue-50 shadow-blue-100";
 ----------------------------------- */
 function normalizeReasonText(txt) {
   if (!txt || txt === "EMPTY") return "";
-  // Aggressive cleaning to prevent duplicate "Reason (R)" labels
+  // Removes redundant "Reason (R):" labels found in your database strings
   const pattern = /^\s*(Reasoning|Reason|Context|Assertion|Assertion \(A\)|Reason \(R\))\s*[:\-]\s*/gi;
   return txt.replace(pattern, "").replace(/Reason \(R\):/gi, "").trim();
 }
@@ -59,71 +59,18 @@ export function initializeElements() {
     chapterNameDisplay: document.getElementById("chapter-name-display"),
     analysisModal: document.getElementById("analysis-modal"),
     analysisContent: document.getElementById("analysis-content"),
-    btnSimple: document.getElementById("btn-simple"),
-    btnMedium: document.getElementById("btn-medium"),
-    btnAdvanced: document.getElementById("btn-advanced"),
-    welcomeUser: document.getElementById("user-welcome"),
-    paywallScreen: document.getElementById("paywall-screen")
+    welcomeUser: document.getElementById("user-welcome")
   };
 
+  // FIXED: No longer using insertBefore to prevent Node errors
   if (!document.getElementById("review-container") && els.reviewScreen) {
     const rc = document.createElement("div");
     rc.id = "review-container";
-    rc.className = "w-full max-w-3xl text-left mt-10 hidden space-y-4";
-    els.reviewScreen.appendChild(rc);
+    rc.className = "w-full max-w-3xl text-left mt-10 hidden space-y-6";
+    els.reviewScreen.appendChild(rc); 
     els.reviewContainer = rc;
   }
   isInit = true;
-}
-
-export function renderResults(stats, currentLevel) {
-    initializeElements();
-    showView("results-screen");
-    if (els.score) els.score.textContent = `${stats.correct} / ${stats.total}`;
-
-    const tiers = ['Simple', 'Medium', 'Advanced'];
-    tiers.forEach(t => {
-        const btn = document.getElementById(`btn-${t.toLowerCase()}`);
-        if (btn) btn.innerHTML = (currentLevel === t) ? `🔄 ${t} (Try Again)` : `🚀 ${t}`;
-    });
-
-    if (els.curiosityBox) {
-        if (currentLevel === 'Simple') {
-            els.curiosityBox.innerHTML = "<b>Foundation Built!</b> You've mastered the basics. Moving to <b>Medium</b> will now test your logic.";
-        } else if (currentLevel === 'Medium') {
-            els.curiosityBox.innerHTML = "<b>Excellent Logic!</b> The <b>Advanced</b> tier awaits with high-stakes Case Studies.";
-        } else {
-            const mastery = (stats.correct / stats.total) >= 0.9;
-            els.curiosityBox.innerHTML = mastery ? "🔥 <b>LEGENDARY MASTERY!</b>" : "<b>So close!</b> Reach 90% for Mastery.";
-        }
-    }
-
-    const analysisBtn = document.getElementById('btn-show-analysis');
-    if (analysisBtn) {
-        analysisBtn.onclick = () => {
-            const rows = [];
-            const categories = [
-                { key: 'mcq', label: 'MCQ (Basic Facts)' },
-                { key: 'ar', label: 'Assertion-Reason (Logic)' },
-                { key: 'case', label: 'Case-Based (Context)' }
-            ];
-            categories.forEach(cat => {
-                const data = stats[cat.key];
-                if (data && data.t > 0) {
-                    const acc = Math.round((data.c / data.t) * 100);
-                    rows.push(`
-                        <tr class="border-b border-gray-100 text-sm">
-                            <td class="py-4 font-bold text-gray-700">${cat.label}</td>
-                            <td class="text-center">${data.c}</td>
-                            <td class="text-center text-red-500">${data.w}</td>
-                            <td class="text-right font-bold text-blue-700">${acc}%</td>
-                        </tr>`);
-                }
-            });
-            els.analysisContent.innerHTML = `<table class="w-full"><tbody>${rows.join('')}</tbody></table>`;
-            els.analysisModal.classList.remove('hidden');
-        };
-    }
 }
 
 export function renderQuestion(q, idxOneBased, selected, submitted) {
@@ -131,7 +78,7 @@ export function renderQuestion(q, idxOneBased, selected, submitted) {
   if (!els.list) return;
   const type = (q.question_type || "").toLowerCase();
 
-  // 1. ASSERTION-REASON LAYOUT (Fixed for professional alignment)
+  // 1. FIXED ASSERTION-REASON ALIGNMENT
   if (type.includes("ar") || type.includes("assertion") || q.text.toLowerCase().includes("assertion")) {
     const assertion = q.text.replace(/Assertion \(A\):/gi, "").trim();
     const reason = normalizeReasonText(q.scenario_reason);
@@ -142,10 +89,11 @@ export function renderQuestion(q, idxOneBased, selected, submitted) {
       D: "A is false but R is true.",
     };
     const html = ["A", "B", "C", "D"].map(o => generateOptionHtml(q, o, selected, submitted, arOptions[o])).join("");
+    
     els.list.innerHTML = `
       <div class="max-w-4xl mx-auto space-y-6 animate-fadeIn text-left">
         <div>
-          <div class="text-xl font-extrabold text-gray-900 mb-4">Q${idxOneBased}. Assertion (A): ${assertion}</div>
+          <div class="text-xl font-extrabold text-gray-900 leading-snug mb-4">Q${idxOneBased}. Assertion (A): ${assertion}</div>
           <div class="bg-blue-50/50 p-6 rounded-2xl border-l-4 border-cbse-blue shadow-sm">
             <span class="text-cbse-blue font-black uppercase text-[10px] block mb-2 tracking-widest">REASON (R)</span>
             <div class="text-gray-800 leading-relaxed font-semibold text-lg">${reason}</div>
@@ -161,8 +109,8 @@ export function renderQuestion(q, idxOneBased, selected, submitted) {
     const html = ["A", "B", "C", "D"].map(o => generateOptionHtml(q, o, selected, submitted)).join("");
     els.list.innerHTML = `
       <div class="grid grid-cols-1 md:grid-cols-2 gap-8 animate-fadeIn text-left">
-        <div class="p-6 bg-gray-50 rounded-2xl border border-gray-100 max-h-[60vh] overflow-y-auto">
-          <h3 class="font-black mb-4 text-cbse-blue uppercase text-xs tracking-widest border-b pb-2">Context / Case Study</h3>
+        <div class="p-6 bg-gray-50 rounded-2xl border border-gray-100 shadow-inner max-h-[60vh] overflow-y-auto">
+          <h3 class="font-black mb-4 text-cbse-blue uppercase text-xs tracking-widest border-b pb-2">Context</h3>
           <p class="text-gray-800 leading-relaxed font-medium">${q.scenario_reason}</p>
         </div>
         <div class="space-y-6">
@@ -175,14 +123,10 @@ export function renderQuestion(q, idxOneBased, selected, submitted) {
 
   // 3. STANDARD MCQ
   const html = ["A", "B", "C", "D"].map(o => generateOptionHtml(q, o, selected, submitted)).join("");
-  els.list.innerHTML = `
-    <div class="max-w-4xl mx-auto space-y-6 text-left">
-      <div class="text-xl font-extrabold text-gray-900">Q${idxOneBased}: ${q.text}</div>
-      <div class="grid grid-cols-1 gap-3">${html}</div>
-    </div>`;
+  els.list.innerHTML = `<div class="max-w-4xl mx-auto space-y-6 text-left"><div class="text-xl font-extrabold text-gray-900">Q${idxOneBased}: ${q.text}</div><div class="grid gap-3">${html}</div></div>`;
 }
 
-// FIXED: Mistake Review Section - showing correct and wrong answers for all questions
+// FIXED: Review function that shows correct/wrong answers correctly
 export function renderAllQuestionsForReview(questions, userAnswers = {}) {
   initializeElements();
   if (!els.reviewContainer) return;
@@ -192,8 +136,6 @@ export function renderAllQuestionsForReview(questions, userAnswers = {}) {
     const ca = (q.correct_answer || "").toUpperCase();
     const ua = (userAnswers[q.id] || "").toUpperCase();
     const isCorrect = ua === ca;
-    
-    // Clean text specifically for the review list
     const cleanText = q.text.replace(/Assertion \(A\):/gi, "A:").trim();
 
     return `
@@ -263,4 +205,37 @@ export function updateAuthUI(user) {
     els.welcomeUser.textContent = `Welcome, ${user.email.split('@')[0]}`;
     els.welcomeUser.classList.remove("hidden");
   }
+}
+
+export function renderResults(stats, currentLevel) {
+    initializeElements();
+    showView("results-screen");
+    if (els.score) els.score.textContent = `${stats.correct} / ${stats.total}`;
+
+    const analysisBtn = document.getElementById('btn-show-analysis');
+    if (analysisBtn) {
+        analysisBtn.onclick = () => {
+            const rows = [];
+            const categories = [
+                { key: 'mcq', label: 'MCQ (Basic Facts)' },
+                { key: 'ar', label: 'Assertion-Reason (Logic)' },
+                { key: 'case', label: 'Case-Based (Context)' }
+            ];
+            categories.forEach(cat => {
+                const data = stats[cat.key];
+                if (data && data.t > 0) {
+                    const acc = Math.round((data.c / data.t) * 100);
+                    rows.push(`
+                        <tr class="border-b border-gray-100 text-sm">
+                            <td class="py-4 font-bold text-gray-700">${cat.label}</td>
+                            <td class="text-center">${data.c}</td>
+                            <td class="text-center text-red-500">${data.w}</td>
+                            <td class="text-right font-bold text-blue-700">${acc}%</td>
+                        </tr>`);
+                }
+            });
+            els.analysisContent.innerHTML = `<table class="w-full"><tbody>${rows.join('')}</tbody></table>`;
+            els.analysisModal.classList.remove('hidden');
+        };
+    }
 }
