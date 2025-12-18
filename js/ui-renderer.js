@@ -12,11 +12,10 @@ const SELECTED_CLS = " border-blue-500 bg-blue-50";
 
 /**
  * CLEANER: Aggressively strips hardcoded labels from raw strings.
- * Prevents "Assertion (A): Assertion (A):" and "Reason (R): Reason (R):" duplication.
+ * Prevents duplication and removes "Consider the impact..." suggestion text.
  */
 function normalizeReasonText(txt) {
   if (!txt) return "";
-  // Regex removes raw prefixes like "Assertion (A):" or "Consider the impact..."
   const pattern = /^\s*(Reasoning|Reason|Context|Assertion|Assertion \(A\)|Reason \(R\)|Scenario|Suggestion text|Consider the impact of|Consider the)\s*(\(R\)|\(A\))?\s*[:\-]\s*/gi;
   // Double-pass ensures even nested labels are removed
   return txt.replace(pattern, "").replace(pattern, "").trim();
@@ -55,6 +54,35 @@ export function initializeElements() {
     els.reviewContainer = rc;
   }
   isInit = true;
+}
+
+/* -----------------------------------
+   STATUS & HEADER
+----------------------------------- */
+export function showStatus(msg, cls = "text-gray-700") {
+  initializeElements();
+  if (!els.status) return;
+  els.status.innerHTML = msg;
+  els.status.className = `p-3 text-center font-semibold ${cls}`;
+  els.status.classList.remove("hidden");
+}
+
+export function hideStatus() {
+  initializeElements();
+  if (els.status) els.status.classList.add("hidden");
+}
+
+export function updateHeader(topicDisplayTitle, diff) {
+  initializeElements();
+  if (els.title) els.title.textContent = topicDisplayTitle;
+  if (els.chapterNameDisplay) {
+    els.chapterNameDisplay.textContent = topicDisplayTitle;
+    els.chapterNameDisplay.classList.remove("hidden");
+  }
+  if (els.diffBadge) {
+    els.diffBadge.textContent = `Difficulty: ${diff || "--"}`;
+    els.diffBadge.classList.remove("hidden");
+  }
 }
 
 /* -----------------------------------
@@ -103,6 +131,16 @@ export function hideAuthLoading() {
 }
 
 /* -----------------------------------
+   VIEW CONTROL
+----------------------------------- */
+export function showView(viewName) {
+  initializeElements();
+  const views = { "quiz-content": els.quizContent, "results-screen": els.reviewScreen, "paywall-screen": els.paywallScreen };
+  Object.values(views).forEach(v => v?.classList.add("hidden"));
+  views[viewName]?.classList.remove("hidden");
+}
+
+/* -----------------------------------
    QUESTION RENDERER
 ----------------------------------- */
 function generateOptionHtml(q, opt, selected, submitted, optionText) {
@@ -143,7 +181,7 @@ export function renderQuestion(q, idxOneBased, selected, submitted) {
   const type = mapped.question_type;
   const optKeys = ["A", "B", "C", "D"];
 
-  /* ================== ASSERTION–REASON (FIXED) ================== */
+  /* ================== ASSERTION–REASON (FIXED DUPLICATION) ================== */
   if (type === "ar" || mapped.text.toLowerCase().includes("assertion")) {
     const assertion = normalizeReasonText(cleanKatexMarkers(mapped.text));
     const reason = normalizeReasonText(cleanKatexMarkers(mapped.scenario_reason || mapped.explanation));
@@ -172,13 +210,12 @@ export function renderQuestion(q, idxOneBased, selected, submitted) {
     return;
   }
 
-  /* ================== CASE BASED (FIXED LABELS) ================== */
+  /* ================== CASE BASED (USE HINT) ================== */
   if (type === "case") {
     const scenario = normalizeReasonText(cleanKatexMarkers(mapped.scenario_reason));
     const question = cleanKatexMarkers(mapped.text);
     const optionsHtml = optKeys.map(opt => generateOptionHtml(mapped, opt, selected, submitted)).join("");
     const reason = normalizeReasonText(cleanKatexMarkers(mapped.explanation));
-    // RENDER: Use "Hint" instead of "Reasoning" for Case Based
     const hintHtml = (reason || !submitted) && reason 
       ? `<div class="mt-3 p-3 bg-blue-50 border border-blue-100 rounded text-gray-700 italic text-sm"><b>Hint:</b> ${reason}</div>` 
       : "";
@@ -211,7 +248,7 @@ export function renderQuestion(q, idxOneBased, selected, submitted) {
 }
 
 /* -----------------------------------
-   NAV, RESULTS, AUTH, AND VIEWS
+   INTERACTION HANDLERS
 ----------------------------------- */
 export function attachAnswerListeners(handler) {
   initializeElements();
@@ -233,6 +270,9 @@ export function updateNavigation(index, total, submitted) {
   if (els.counter) els.counter.textContent = `${index + 1} / ${total}`;
 }
 
+/* -----------------------------------
+   RESULTS & FEEDBACK (CRITICAL EXPORTS)
+----------------------------------- */
 export function showResults(score, total) {
   initializeElements();
   if (els.score) els.score.textContent = `${score} / ${total}`;
@@ -243,36 +283,17 @@ export function renderAllQuestionsForReview(questions, userAnswers = {}) {
   initializeElements();
   if (!els.reviewContainer) return;
   const html = questions.map((q, i) => {
-    const correct = (userAnswers[q.id] || "").toUpperCase() === (q.correct_answer || "").toUpperCase();
+    const ca = (q.correct_answer || "").toUpperCase();
+    const ua = (userAnswers[q.id] || "").toUpperCase();
+    const correct = ua === ca;
     return `
       <div class="mb-5 p-4 bg-white rounded-lg border border-gray-100 shadow-sm animate-fadeIn">
         <p class="font-bold text-base mb-2">Q${i + 1}: ${cleanKatexMarkers(q.text)}</p>
-        <p class="text-sm">Your Answer: <span class="${correct ? 'text-green-600' : 'text-red-600'} font-bold">${userAnswers[q.id] || "No Attempt"}</span></p>
-        <p class="text-sm">Correct Answer: <span class="text-green-700 font-bold">${q.correct_answer}</span></p>
+        <p class="text-sm">Your Answer: <span class="${correct ? 'text-green-600' : 'text-red-600'} font-bold">${ua || "No Attempt"}</span></p>
+        <p class="text-sm">Correct Answer: <span class="text-green-700 font-bold">${ca}</span></p>
       </div>`;
   }).join("");
   els.reviewContainer.innerHTML = html;
-}
-
-export function updateAuthUI(user) {
-  initializeElements();
-  if (!els.authNav) return;
-  const welcomeEl = els.welcomeUser;
-  if (user) {
-    welcomeEl.textContent = `Welcome, ${user.displayName?.split(" ")[0] || "Student"}!`;
-    welcomeEl.classList.remove("hidden");
-    document.getElementById("logout-nav-btn")?.classList.remove("hidden");
-  } else {
-    welcomeEl.classList.add("hidden");
-    document.getElementById("logout-nav-btn")?.classList.add("hidden");
-  }
-}
-
-export function showView(viewName) {
-  initializeElements();
-  const views = { "quiz-content": els.quizContent, "results-screen": els.reviewScreen, "paywall-screen": els.paywallScreen };
-  Object.values(views).forEach(v => v?.classList.add("hidden"));
-  views[viewName]?.classList.remove("hidden");
 }
 
 export function getResultFeedback({ score, total, difficulty }) {
@@ -306,4 +327,18 @@ export function showResultFeedback(feedback, requestMoreHandler) {
     container.appendChild(btn);
   }
   els.reviewScreen.insertBefore(container, els.reviewScreen.querySelector(".flex") || null);
+}
+
+export function updateAuthUI(user) {
+  initializeElements();
+  if (!els.authNav) return;
+  const welcomeEl = els.welcomeUser;
+  if (user) {
+    welcomeEl.textContent = `Welcome, ${user.displayName?.split(" ")[0] || "Student"}!`;
+    welcomeEl.classList.remove("hidden");
+    document.getElementById("logout-nav-btn")?.classList.remove("hidden");
+  } else {
+    welcomeEl.classList.add("hidden");
+    document.getElementById("logout-nav-btn")?.classList.add("hidden");
+  }
 }
