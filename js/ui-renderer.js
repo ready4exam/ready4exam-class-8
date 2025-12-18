@@ -100,9 +100,6 @@ export function hideAuthLoading() {
   if (overlay) overlay.classList.add("hidden");
 }
 
-/* -----------------------------------
-   QUESTION RENDERER
------------------------------------ */
 function generateOptionHtml(q, opt, selected, submitted, optionText) {
   const txt = optionText ? optionText : cleanKatexMarkers(q.options[opt] || "");
   const isSel = selected === opt;
@@ -179,6 +176,7 @@ export function renderQuestion(q, idxOneBased, selected, submitted) {
     const optionsHtml = optKeys.map(opt => generateOptionHtml(mapped, opt, selected, submitted)).join("");
     const reason = normalizeReasonText(cleanKatexMarkers(mapped.explanation));
     
+    // RENDER: Use "Hint" instead of "Reasoning"
     const hintHtml = (reason || !submitted) && reason 
       ? `<div class="mt-4 p-3 bg-blue-50 border border-blue-100 rounded text-gray-700 text-sm">
            <span class="font-bold text-blue-700 uppercase text-xs block mb-1">💡 Hint</span>
