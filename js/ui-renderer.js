@@ -1,352 +1,198 @@
 // js/ui-renderer.js
-import { cleanKatexMarkers } from './utils.js';
+import { cleanKatexMarkers } from "./utils.js";
 
 let els = {};
 let isInit = false;
 
-/* -----------------------------------
-   UI STYLING CONSTANTS
------------------------------------ */
-const OPTION_BASE_CLS =
+/* ================= UI CONSTANTS ================= */
+const OPTION_BASE =
   "option-label flex items-start p-3 border-2 rounded-lg cursor-pointer transition";
-const CORRECT_CLS = " border-green-600 bg-green-50";
-const WRONG_CLS = " border-red-600 bg-red-50";
-const SELECTED_CLS = " border-blue-500 bg-blue-50";
+const STYLES = {
+  correct: " border-green-600 bg-green-50",
+  wrong: " border-red-600 bg-red-50",
+  selected: " border-blue-500 bg-blue-50",
+};
 
-/* -----------------------------------
-   TEXT NORMALIZER
------------------------------------ */
-function normalizeReasonText(txt) {
-  if (!txt) return "";
-  const pattern =
-    /^\s*(Reasoning|Reason|Context|Assertion|Assertion \(A\)|Reason \(R\)|Scenario|Suggestion text|Consider the impact of|Consider the)\s*(\(R\)|\(A\))?\s*[:\-]\s*/gi;
-  return txt.replace(pattern, "").replace(pattern, "").trim();
-}
+/* ================= HELPERS ================= */
+const strip = (t = "") =>
+  t.replace(
+    /^\s*(Reasoning|Reason|Context|Assertion|Assertion \(A\)|Reason \(R\)|Scenario)\s*[:\-]\s*/gi,
+    ""
+  ).trim();
 
-/* -----------------------------------
-   ELEMENT INITIALIZATION
------------------------------------ */
+/* ================= INIT ================= */
 export function initializeElements() {
   if (isInit) return;
-
   els = {
     title: document.getElementById("quiz-page-title"),
-    diffBadge: document.getElementById("difficulty-display"),
+    diff: document.getElementById("difficulty-display"),
     status: document.getElementById("status-message"),
     list: document.getElementById("question-list"),
     counter: document.getElementById("question-counter"),
-    prevButton: document.getElementById("prev-btn"),
-    nextButton: document.getElementById("next-btn"),
-    submitButton: document.getElementById("submit-btn"),
-    reviewScreen: document.getElementById("results-screen"),
+    prev: document.getElementById("prev-btn"),
+    next: document.getElementById("next-btn"),
+    submit: document.getElementById("submit-btn"),
+    quiz: document.getElementById("quiz-content"),
+    results: document.getElementById("results-screen"),
     score: document.getElementById("score-display"),
-    authNav: document.getElementById("auth-nav-container"),
-    paywallScreen: document.getElementById("paywall-screen"),
-    paywallContent: document.getElementById("paywall-content"),
-    quizContent: document.getElementById("quiz-content"),
-    reviewContainer: document.getElementById("review-container"),
-    welcomeUser: document.getElementById("welcome-user"),
-    miniTitle: document.getElementById("quiz-title"),
-    chapterNameDisplay: document.getElementById("chapter-name-display"),
+    paywall: document.getElementById("paywall-screen"),
   };
-
-  if (!els.reviewContainer && els.reviewScreen) {
-    const rc = document.createElement("div");
-    rc.id = "review-container";
-    rc.className = "w-full max-w-3xl text-left mb-8";
-    els.reviewScreen.insertBefore(
-      rc,
-      els.reviewScreen.querySelector(".flex") || null
-    );
-    els.reviewContainer = rc;
-  }
-
   isInit = true;
 }
 
-/* -----------------------------------
-   STATUS MESSAGE HANDLER (FIX)
------------------------------------ */
-export function showStatus(message = "", type = "info") {
+/* ================= STATUS ================= */
+export function showStatus(msg = "", type = "info") {
   initializeElements();
   if (!els.status) return;
-
-  const base =
-    "px-4 py-2 rounded-md text-sm font-medium transition";
-
-  const styles = {
-    info: "bg-blue-50 text-blue-700 border border-blue-200",
-    success: "bg-green-50 text-green-700 border border-green-200",
-    error: "bg-red-50 text-red-700 border border-red-200",
-    warning: "bg-yellow-50 text-yellow-700 border border-yellow-200",
+  const map = {
+    info: "bg-blue-50 text-blue-700 border-blue-200",
+    success: "bg-green-50 text-green-700 border-green-200",
+    error: "bg-red-50 text-red-700 border-red-200",
+    warning: "bg-yellow-50 text-yellow-700 border-yellow-200",
   };
-
-  els.status.className = `${base} ${styles[type] || styles.info}`;
-  els.status.textContent = message;
+  els.status.className = `px-4 py-2 rounded border text-sm ${map[type] || map.info}`;
+  els.status.textContent = msg;
   els.status.classList.remove("hidden");
 }
 
-export function hideStatus() {
-  initializeElements();
-  if (els.status) els.status.classList.add("hidden");
-}
-
-/* -----------------------------------
-   LOADING OVERLAY
------------------------------------ */
-export function showAuthLoading(message = "Preparing your challenge...") {
-  initializeElements();
-  let overlay = document.getElementById("auth-loading-overlay");
-
-  if (!overlay) {
-    overlay = document.createElement("div");
-    overlay.id = "auth-loading-overlay";
-    overlay.className =
-      "fixed inset-0 bg-white flex flex-col items-center justify-center z-50";
-
-    overlay.innerHTML = `
-      <div class="flex flex-col items-center max-w-sm px-6 text-center">
-        <div class="relative mb-8">
-          <div class="absolute inset-0 rounded-full bg-blue-100 animate-ping opacity-75"></div>
-          <div class="relative bg-blue-600 p-6 rounded-full shadow-xl">
-            <svg class="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13">
-              </path>
-            </svg>
-          </div>
-        </div>
-        <h2 class="text-2xl font-bold text-gray-800 mb-2">
-          Think Like a Pro!
-        </h2>
-        <p class="text-blue-600 font-medium animate-pulse mb-6">
-          ${message}
-        </p>
-        <div class="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
-          <div class="bg-blue-600 h-full animate-progress-bar"></div>
-        </div>
-      </div>
-    `;
-    document.body.appendChild(overlay);
-  } else {
-    overlay.querySelector("p").textContent = message;
-    overlay.classList.remove("hidden");
-  }
-}
-
-export function hideAuthLoading() {
-  const overlay = document.getElementById("auth-loading-overlay");
-  if (overlay) overlay.classList.add("hidden");
-}
-
-/* -----------------------------------
-   OPTION RENDERER
------------------------------------ */
-function generateOptionHtml(q, opt, selected, submitted, optionText) {
-  const txt = optionText
-    ? optionText
-    : cleanKatexMarkers(q.options[opt] || "");
-
-  const isSel = selected === opt;
-  const isCorrect =
-    submitted && q.correct_answer?.toUpperCase() === opt;
-  const isWrong = submitted && isSel && !isCorrect;
-
-  const cls = `${OPTION_BASE_CLS}${
-    isCorrect
-      ? CORRECT_CLS
-      : isWrong
-      ? WRONG_CLS
-      : isSel
-      ? SELECTED_CLS
-      : ""
-  }`;
+/* ================= OPTION ================= */
+function optionHTML(q, opt, sel, done, text) {
+  const isSel = sel === opt;
+  const isCorrect = done && q.correct === opt;
+  const isWrong = done && isSel && !isCorrect;
 
   return `
-    <label class="block">
-      <input type="radio"
-             name="q-${q.id}"
-             value="${opt}"
-             class="hidden"
-             ${isSel ? "checked" : ""}
-             ${submitted ? "disabled" : ""}>
-      <div class="${cls}">
-        <span class="font-bold mr-3">${opt}.</span>
-        <span class="text-gray-800">${txt}</span>
-      </div>
-    </label>
-  `;
+  <label>
+    <input type="radio" class="hidden" name="q-${q.id}" value="${opt}"
+      ${isSel ? "checked" : ""} ${done ? "disabled" : ""}>
+    <div class="${OPTION_BASE}${
+      isCorrect ? STYLES.correct : isWrong ? STYLES.wrong : isSel ? STYLES.selected : ""
+    }">
+      <b class="mr-3">${opt}.</b>
+      <span>${text || cleanKatexMarkers(q.options[opt] || "")}</span>
+    </div>
+  </label>`;
 }
 
-/* -----------------------------------
-   QUESTION RENDERER
------------------------------------ */
-export function renderQuestion(q, idxOneBased, selected, submitted) {
+/* ================= QUESTION ================= */
+export function renderQuestion(q, idx, selected, submitted) {
   initializeElements();
   if (!els.list) return;
 
-  const mapped = {
+  const data = {
     id: q.id,
-    question_type: (q.question_type || q.type || "").toLowerCase(),
-    text: q.text || q.question_text || q.prompt || "",
-    scenario_reason: q.scenario_reason || q.context || q.passage || "",
-    explanation: q.explanation || q.reason || "",
-    correct_answer: (q.correct_answer || q.answer || "").toUpperCase(),
-    options: {
-      A: q.options?.A || q.option_a || "",
-      B: q.options?.B || q.option_b || "",
-      C: q.options?.C || q.option_c || "",
-      D: q.options?.D || q.option_d || "",
-    },
+    type: (q.question_type || q.type || "").toLowerCase(),
+    text: cleanKatexMarkers(q.text || ""),
+    context: strip(cleanKatexMarkers(q.scenario_reason || q.context || "")),
+    explanation: strip(cleanKatexMarkers(q.explanation || "")),
+    correct: (q.correct_answer || "").toUpperCase(),
+    options: q.options || {},
   };
 
-  const type = mapped.question_type;
-  const optKeys = ["A", "B", "C", "D"];
+  const O = ["A", "B", "C", "D"];
 
-  /* ============ ASSERTION–REASON ============ */
-  if (type === "ar" || mapped.text.toLowerCase().includes("assertion")) {
-    const assertion = normalizeReasonText(cleanKatexMarkers(mapped.text));
-    const reason = normalizeReasonText(
-      cleanKatexMarkers(mapped.scenario_reason || mapped.explanation)
-    );
-
-    const arOptions = {
+  /* -------- ASSERTION–REASON -------- */
+  if (data.type === "ar" || data.text.toLowerCase().includes("assertion")) {
+    const AR = {
       A: "Both A and R are true and R is the correct explanation of A.",
       B: "Both A and R are true but R is not the correct explanation of A.",
       C: "A is true but R is false.",
       D: "A is false but R is true.",
     };
 
-    const html = optKeys
-      .map(opt =>
-        generateOptionHtml(mapped, opt, selected, submitted, arOptions[opt])
-      )
-      .join("");
-
     els.list.innerHTML = `
-      <div class="space-y-6">
-        <div class="p-4 bg-white rounded border">
-          <div class="font-bold mb-2">Q${idxOneBased}.</div>
-          <div class="mb-3"><b>Assertion (A):</b> ${assertion}</div>
-          <div class="bg-gray-50 p-3 border-l-4 border-blue-500">
-            <span class="font-bold text-xs uppercase block mb-1">Reason (R)</span>
-            ${reason}
+      <div class="space-y-4">
+        <div class="p-4 border rounded">
+          <b>Q${idx}.</b>
+          <div class="mt-2"><b>Assertion (A):</b> ${data.text}</div>
+          <div class="mt-2 p-3 bg-gray-50 border-l-4 border-blue-500">
+            <b class="block text-xs uppercase mb-1">Reason (R)</b>
+            ${data.context || data.explanation}
           </div>
         </div>
-        <div class="space-y-3">${html}</div>
-      </div>
-    `;
+        ${O.map(o => optionHTML(data, o, selected, submitted, AR[o])).join("")}
+      </div>`;
     return;
   }
 
-  /* ============ CASE BASED ============ */
-  if (type === "case" || type === "case based") {
-    const scenario = normalizeReasonText(cleanKatexMarkers(mapped.scenario_reason));
-    const question = cleanKatexMarkers(mapped.text);
-    const hint = normalizeReasonText(cleanKatexMarkers(mapped.explanation));
-
-    const optionsHtml = optKeys
-      .map(opt => generateOptionHtml(mapped, opt, selected, submitted))
-      .join("");
-
+  /* -------- CASE BASED -------- */
+  if (data.type.includes("case")) {
     els.list.innerHTML = `
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div class="bg-gray-50 p-4 border rounded">
+      <div class="grid md:grid-cols-2 gap-6">
+        <div class="p-4 bg-gray-50 border rounded">
           <b>Context</b>
-          <p class="mt-2 text-sm">${scenario}</p>
+          <p class="mt-2 text-sm">${data.context}</p>
         </div>
         <div>
-          <div class="font-bold mb-3">Q${idxOneBased}: ${question}</div>
-          <div class="space-y-3">${optionsHtml}</div>
+          <b>Q${idx}: ${data.text}</b>
+          <div class="space-y-3 mt-3">
+            ${O.map(o => optionHTML(data, o, selected, submitted)).join("")}
+          </div>
           ${
-            hint && !submitted
+            data.explanation && !submitted
               ? `<div class="mt-4 p-3 bg-blue-50 border rounded text-sm">
-                   <b>Hint:</b> ${hint}
+                   <b>Hint:</b> ${data.explanation}
                  </div>`
               : ""
           }
         </div>
-      </div>
-    `;
+      </div>`;
     return;
   }
 
-  /* ============ NORMAL MCQ ============ */
-  const qText = cleanKatexMarkers(mapped.text);
-  const reason = normalizeReasonText(cleanKatexMarkers(mapped.explanation));
-
-  const optionsHtml = optKeys
-    .map(opt => generateOptionHtml(mapped, opt, selected, submitted))
-    .join("");
-
+  /* -------- NORMAL MCQ -------- */
   els.list.innerHTML = `
-    <div class="space-y-6">
-      <div class="font-bold">Q${idxOneBased}: ${qText}</div>
-      ${reason && !submitted ? `<div class="text-sm italic">Hint: ${reason}</div>` : ""}
-      <div class="space-y-3">${optionsHtml}</div>
+    <div class="space-y-4">
+      <b>Q${idx}: ${data.text}</b>
+      ${data.explanation && !submitted ? `<div class="text-sm italic">Hint: ${data.explanation}</div>` : ""}
+      ${O.map(o => optionHTML(data, o, selected, submitted)).join("")}
       ${
-        submitted && reason
-          ? `<div class="mt-3 p-3 bg-gray-50 border text-sm">
-               <b>Reasoning:</b> ${reason}
-             </div>`
+        submitted && data.explanation
+          ? `<div class="p-3 bg-gray-50 border text-sm"><b>Reasoning:</b> ${data.explanation}</div>`
           : ""
       }
-    </div>
-  `;
+    </div>`;
 }
 
-/* -----------------------------------
-   ANSWER HANDLING
------------------------------------ */
-export function attachAnswerListeners(handler) {
+/* ================= ANSWERS ================= */
+export function attachAnswerListeners(fn) {
   initializeElements();
-  if (!els.list) return;
-
-  if (els._listener)
-    els.list.removeEventListener("change", els._listener);
-
-  els._listener = (e) => {
-    if (e.target?.type === "radio") {
-      handler(e.target.name.substring(2), e.target.value);
-    }
+  els.list.onchange = e => {
+    if (e.target?.type === "radio")
+      fn(e.target.name.slice(2), e.target.value);
   };
-
-  els.list.addEventListener("change", els._listener);
 }
 
-/* -----------------------------------
-   NAVIGATION
------------------------------------ */
-export function updateNavigation(index, total, submitted) {
+/* ================= NAV ================= */
+export function updateNavigation(i, total, done) {
   initializeElements();
-  const show = (btn, cond) =>
-    btn && btn.classList.toggle("hidden", !cond);
-
-  show(els.prevButton, index > 0);
-  show(els.nextButton, index < total - 1);
-  show(els.submitButton, !submitted && index === total - 1);
-
-  if (els.counter)
-    els.counter.textContent = `${index + 1} / ${total}`;
+  els.counter.textContent = `${i + 1} / ${total}`;
+  els.prev.classList.toggle("hidden", i === 0);
+  els.next.classList.toggle("hidden", i === total - 1);
+  els.submit.classList.toggle("hidden", done || i !== total - 1);
 }
 
-/* -----------------------------------
-   RESULTS + VIEW
------------------------------------ */
+/* ================= RESULTS ================= */
 export function showResults(score, total) {
   initializeElements();
-  if (els.score) els.score.textContent = `${score} / ${total}`;
-  showView("results-screen");
+  els.score.textContent = `${score} / ${total}`;
+  showView("results");
 }
 
-export function showView(viewName) {
-  initializeElements();
-  const views = {
-    "quiz-content": els.quizContent,
-    "results-screen": els.reviewScreen,
-    "paywall-screen": els.paywallScreen,
+export function getResultFeedback({ score, total, difficulty }) {
+  const pct = total ? Math.round((score / total) * 100) : 0;
+  return {
+    title: pct >= 90 ? "Excellent!" : pct >= 60 ? "Good effort!" : "Keep practicing!",
+    message: `You scored ${pct}%`,
+    percentage: pct,
   };
+}
 
-  Object.values(views).forEach(v => v?.classList.add("hidden"));
-  views[viewName]?.classList.remove("hidden");
+/* ================= VIEW ================= */
+export function showView(v) {
+  initializeElements();
+  els.quiz.classList.add("hidden");
+  els.results.classList.add("hidden");
+  els.paywall.classList.add("hidden");
+  (els[v] || els[`${v}`])?.classList.remove("hidden");
 }
