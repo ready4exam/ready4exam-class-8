@@ -1,5 +1,5 @@
 // -----------------------------------------------------------------------------
-// UNIVERSAL QUIZ ENGINE - SCHEMA ALIGNED FOR CASE-BASED & AR
+// UNIVERSAL QUIZ ENGINE - FULL INTEGRATION (AR + CASE + MISTAKE REVIEW)
 // -----------------------------------------------------------------------------
 
 import { initializeServices, getAuthUser } from "./config.js";
@@ -13,6 +13,9 @@ import curriculumData from "./curriculum.js";
 
 const CLASS_ID = "8";
 
+// ===========================================================
+// STATE MANAGEMENT
+// ===========================================================
 let quizState = {
   classId: CLASS_ID,
   subject: "",
@@ -25,6 +28,9 @@ let quizState = {
   score: 0,
 };
 
+// ===========================================================
+// SMART CHAPTER LOOKUP
+// ===========================================================
 let curriculumLookupMap = null;
 
 function findCurriculumMatch(topicSlug) {
@@ -50,6 +56,9 @@ function findCurriculumMatch(topicSlug) {
   return curriculumLookupMap.get(target) || null;
 }
 
+// ===========================================================
+// URL PARSING & DATA LOADING
+// ===========================================================
 function parseUrlParameters() {
   const params = new URLSearchParams(location.search);
   const urlTable = params.get("table") || params.get("topic") || "";
@@ -75,11 +84,11 @@ function parseUrlParameters() {
 
 async function loadQuiz() {
   try {
-    UI.showStatus("Fetching questions...");
+    UI.showStatus("Preparing your challenge...");
     const rawQuestions = await fetchQuestions(quizState.topicSlug, quizState.difficulty);
     if (!rawQuestions?.length) throw new Error("No questions found.");
 
-    // MAPPING TO SUPABASE SCHEMA
+    // Mapping logic aligned with your Supabase schema
     quizState.questions = rawQuestions.map(q => ({
       id: q.id,
       question_type: (q.question_type || "").toLowerCase(),
@@ -103,6 +112,9 @@ async function loadQuiz() {
   }
 }
 
+// ===========================================================
+// CORE NAVIGATION & SELECTION
+// ===========================================================
 function renderQuestion() {
   const i = quizState.currentQuestionIndex;
   const q = quizState.questions[i];
@@ -127,6 +139,9 @@ function handleAnswerSelection(id, opt) {
   }
 }
 
+// ===========================================================
+// SUBMISSION & ANALYSIS
+// ===========================================================
 async function handleSubmit() {
   if (quizState.isSubmitted) return;
   quizState.isSubmitted = true;
@@ -142,14 +157,19 @@ async function handleSubmit() {
   quizState.questions.forEach(q => {
     const isCorrect = quizState.userAnswers[q.id]?.toUpperCase() === q.correct_answer;
     const type = q.question_type.toLowerCase();
+    
     if (isCorrect) stats.correct++;
+
     let category = 'mcq';
     if (type.includes('ar') || type.includes('assertion')) category = 'ar';
     else if (type.includes('case')) category = 'case';
+
     stats[category].t++;
     if (isCorrect) stats[category].c++;
     else stats[category].w++;
   });
+
+  quizState.score = stats.correct;
 
   const user = getAuthUser();
   if (user) {
@@ -161,27 +181,43 @@ async function handleSubmit() {
       user_answers: quizState.userAnswers
     }).catch(console.warn);
   }
+
   UI.renderResults(stats, quizState.difficulty);
 }
 
+// ===========================================================
+// EVENT LISTENERS & INITIALIZATION
+// ===========================================================
 function attachDomEvents() {
   document.addEventListener("click", e => {
     const b = e.target.closest("button,a");
     if (!b) return;
+
     if (b.id === "prev-btn") return handleNavigation(-1);
     if (b.id === "next-btn") return handleNavigation(1);
     if (b.id === "submit-btn") return handleSubmit();
+    
+    // Auth Actions
     if (["login-btn","google-signin-btn","paywall-login-btn"].includes(b.id)) return signInWithGoogle();
     if (b.id === "logout-nav-btn") return signOut();
+    
+    // REVIEW MISTAKES BUTTON
     if (b.id === "btn-review-errors") {
-        UI.renderAllQuestionsForReview?.(quizState.questions, quizState.userAnswers);
-        document.getElementById('review-container')?.classList.toggle('hidden');
+        UI.renderAllQuestionsForReview(quizState.questions, quizState.userAnswers);
     }
+
     if (b.id === "back-to-chapters-btn") {
       const subject = quizState.subject || "General";
       window.location.href = `chapter-selection.html?subject=${encodeURIComponent(subject)}`;
     }
   });
+}
+
+async function onAuthChange(user) {
+  UI.updateAuthUI?.(user);
+  const ok = user && await checkAccess(quizState.topicSlug);
+  if (ok) loadQuiz();
+  else UI.showView("paywall-screen");
 }
 
 async function init() {
@@ -190,13 +226,6 @@ async function init() {
   await initializeServices();
   await initializeAuthListener(onAuthChange);
   attachDomEvents();
-}
-
-async function onAuthChange(user) {
-  UI.updateAuthUI?.(user);
-  const ok = user && await checkAccess(quizState.topicSlug);
-  if (ok) loadQuiz();
-  else UI.showView("paywall-screen");
 }
 
 document.addEventListener("DOMContentLoaded", init);
