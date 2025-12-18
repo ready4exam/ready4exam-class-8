@@ -4,46 +4,64 @@ let els = {};
 let isInit = false;
 
 /* -----------------------------------
-   UI STYLING CONSTANTS
+   STYLES
 ----------------------------------- */
-const OPTION_BASE_CLS =
+const OPTION_BASE =
   "option-label flex items-start p-4 border-2 rounded-xl cursor-pointer transition-all duration-200 shadow-sm";
-const CORRECT_CLS = " border-success-green bg-green-50 shadow-green-100";
-const WRONG_CLS = " border-danger-red bg-red-50 shadow-red-100";
-const SELECTED_CLS = " border-blue-500 bg-blue-50 shadow-blue-100";
+const CORRECT = " border-success-green bg-green-50";
+const WRONG = " border-danger-red bg-red-50";
+const SELECTED = " border-blue-500 bg-blue-50";
 
 /* -----------------------------------
-   HELPERS
+   ASSERTION–REASON RESOLVER (FINAL)
 ----------------------------------- */
-function splitAssertionReason(text = "") {
-  const clean = cleanKatexMarkers(text);
-  const parts = clean.split(/Reason\s*\(R\)\s*:/i);
-  return {
-    assertion: parts[0].replace(/Assertion\s*\(A\)\s*:/i, "").trim(),
-    reason: (parts[1] || "").trim()
-  };
+function resolveAR(q) {
+  const text = cleanKatexMarkers(q.text || "");
+  const reasonText = cleanKatexMarkers(q.scenario_reason || "");
+
+  // Case 1: Assertion + Reason inside question_text
+  if (/Assertion\s*\(A\)/i.test(text) && /Reason\s*\(R\)/i.test(text)) {
+    const parts = text.split(/Reason\s*\(R\)\s*:/i);
+    return {
+      assertion: parts[0].replace(/Assertion\s*\(A\)\s*:/i, "").trim(),
+      reason: (parts[1] || "").trim()
+    };
+  }
+
+  // Case 2: Assertion in text, Reason in scenario_reason
+  if (reasonText && reasonText !== "EMPTY") {
+    return {
+      assertion: text.replace(/Regarding.*option\.?/i, "").trim(),
+      reason: reasonText.trim()
+    };
+  }
+
+  // Invalid AR → block rendering
+  return null;
 }
 
-function generateOptionHtml(q, opt, selected, submitted, optionText) {
-  const txt = optionText || cleanKatexMarkers(q.options?.[opt] || "");
+/* -----------------------------------
+   OPTION HTML
+----------------------------------- */
+function optionHtml(q, opt, selected, submitted, label) {
   const isSel = selected === opt;
   const isCorrect = submitted && q.correct_answer === opt;
   const isWrong = submitted && isSel && !isCorrect;
 
-  const cls = `${OPTION_BASE_CLS}${
-    isCorrect ? CORRECT_CLS :
-    isWrong ? WRONG_CLS :
-    isSel ? SELECTED_CLS :
+  const cls = `${OPTION_BASE}${
+    isCorrect ? CORRECT :
+    isWrong ? WRONG :
+    isSel ? SELECTED :
     " border-gray-100 bg-white hover:border-blue-300"
   }`;
 
   return `
-    <label class="block group">
+    <label class="block">
       <input type="radio" name="q-${q.id}" value="${opt}" class="hidden"
         ${isSel ? "checked" : ""} ${submitted ? "disabled" : ""}>
       <div class="${cls}">
-        <span class="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg bg-gray-100 font-bold mr-4">${opt}</span>
-        <span class="text-gray-800 font-medium pt-1">${txt}</span>
+        <span class="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-100 font-bold mr-4">${opt}</span>
+        <span class="font-medium">${label}</span>
       </div>
     </label>`;
 }
@@ -55,53 +73,55 @@ export function initializeElements() {
   if (isInit) return;
 
   els = {
-    diffBadge: document.getElementById("difficulty-display"),
-    status: document.getElementById("status-message"),
     list: document.getElementById("question-list"),
     counter: document.getElementById("question-counter"),
-    prevButton: document.getElementById("prev-btn"),
-    nextButton: document.getElementById("next-btn"),
-    submitButton: document.getElementById("submit-btn"),
-    reviewScreen: document.getElementById("results-screen"),
-    quizContent: document.getElementById("quiz-content"),
-    chapterNameDisplay: document.getElementById("chapter-name-display"),
-    analysisModal: document.getElementById("analysis-modal"),
-    analysisContent: document.getElementById("analysis-content"),
-    welcomeUser: document.getElementById("user-welcome"),
+    prev: document.getElementById("prev-btn"),
+    next: document.getElementById("next-btn"),
+    submit: document.getElementById("submit-btn"),
+    quiz: document.getElementById("quiz-content"),
+    results: document.getElementById("results-screen"),
+    paywall: document.getElementById("paywall-screen"),
+    status: document.getElementById("status-message"),
+    header: document.getElementById("chapter-name-display"),
+    diff: document.getElementById("difficulty-display"),
     reviewContainer: null
   };
 
-  if (!document.getElementById("review-container") && els.reviewScreen) {
-    const rc = document.createElement("div");
-    rc.id = "review-container";
-    rc.className = "w-full max-w-4xl text-left mt-10 hidden space-y-6";
-    els.reviewScreen.appendChild(rc);
-    els.reviewContainer = rc;
+  if (!document.getElementById("review-container") && els.results) {
+    const d = document.createElement("div");
+    d.id = "review-container";
+    d.className = "w-full max-w-4xl mt-10 hidden space-y-6";
+    els.results.appendChild(d);
+    els.reviewContainer = d;
   }
 
   isInit = true;
 }
 
 /* -----------------------------------
-   VIEW CONTROL
+   VIEW
 ----------------------------------- */
-export function showView(view) {
+export function showView(v) {
   initializeElements();
-  [els.quizContent, els.reviewScreen, document.getElementById("paywall-screen")]
-    .forEach(v => v?.classList.add("hidden"));
-
-  if (view === "quiz-content") els.quizContent?.classList.remove("hidden");
-  if (view === "results-screen") els.reviewScreen?.classList.remove("hidden");
-  if (view === "paywall-screen") document.getElementById("paywall-screen")?.classList.remove("hidden");
+  [els.quiz, els.results, els.paywall].forEach(x => x?.classList.add("hidden"));
+  if (v === "quiz-content") els.quiz?.classList.remove("hidden");
+  if (v === "results-screen") els.results?.classList.remove("hidden");
+  if (v === "paywall-screen") els.paywall?.classList.remove("hidden");
 }
 
 /* -----------------------------------
-   STATUS
+   HEADER / STATUS
 ----------------------------------- */
+export function updateHeader(t, d) {
+  initializeElements();
+  els.header.textContent = t;
+  els.diff.textContent = `Difficulty: ${d}`;
+}
+
 export function showStatus(msg, cls = "text-blue-600") {
   initializeElements();
   els.status.textContent = msg;
-  els.status.className = `text-center p-4 font-bold ${cls}`;
+  els.status.className = `p-4 font-bold ${cls}`;
   els.status.classList.remove("hidden");
 }
 
@@ -110,91 +130,66 @@ export function hideStatus() {
 }
 
 /* -----------------------------------
-   HEADER
------------------------------------ */
-export function updateHeader(title, diff) {
-  initializeElements();
-  els.chapterNameDisplay.textContent = title;
-  els.diffBadge.textContent = `Difficulty: ${diff}`;
-}
-
-/* -----------------------------------
-   AUTH UI
------------------------------------ */
-export function updateAuthUI(user) {
-  initializeElements();
-  if (user && els.welcomeUser) {
-    els.welcomeUser.textContent = `Welcome, ${user.email.split("@")[0]}`;
-    els.welcomeUser.classList.remove("hidden");
-  }
-}
-
-/* -----------------------------------
-   QUESTION RENDER
+   QUESTION RENDER (FINAL)
 ----------------------------------- */
 export function renderQuestion(q, idx, selected, submitted) {
   initializeElements();
   const type = (q.question_type || "").toLowerCase();
 
-  // ASSERTION–REASON
+  // MASTER AR
   if (type.includes("assertion") || type.includes("ar")) {
-    const { assertion, reason } = splitAssertionReason(q.text);
-
-    const arOptions = {
-      A: "Both A and R are true and R is the correct explanation of A.",
-      B: "Both A and R are true but R is not the correct explanation of A.",
-      C: "A is true but R is false.",
-      D: "A is false but R is true."
-    };
-
-    els.list.innerHTML = `
-      <div class="space-y-6">
-        <div class="text-xl font-black">Q${idx}. Assertion (A): ${assertion}</div>
-        <div class="bg-blue-50 p-6 rounded-xl border-l-4 border-cbse-blue">
-          <div class="text-xs font-black uppercase mb-2 text-cbse-blue">Reason (R)</div>
-          <div class="text-lg font-semibold">${reason}</div>
-        </div>
-        <div class="grid gap-3">
-          ${["A","B","C","D"].map(o =>
-            generateOptionHtml(q, o, selected, submitted, arOptions[o])
-          ).join("")}
-        </div>
-      </div>`;
-    return;
+    const ar = resolveAR(q);
+    if (ar) {
+      els.list.innerHTML = `
+        <div class="space-y-6 text-left">
+          <div class="text-xl font-black">Q${idx}. Assertion (A): ${ar.assertion}</div>
+          <div class="bg-blue-50 p-6 rounded-xl border-l-4 border-cbse-blue">
+            <div class="text-xs font-black uppercase mb-2">Reason (R)</div>
+            <div class="text-lg font-semibold">${ar.reason}</div>
+          </div>
+          <div class="grid gap-3">
+            ${optionHtml(q,"A",selected,submitted,"Both A and R are true and R is the correct explanation of A.")}
+            ${optionHtml(q,"B",selected,submitted,"Both A and R are true but R is not the correct explanation of A.")}
+            ${optionHtml(q,"C",selected,submitted,"A is true but R is false.")}
+            ${optionHtml(q,"D",selected,submitted,"A is false but R is true.")}
+          </div>
+        </div>`;
+      return;
+    }
   }
 
-  // MCQ / CASE
+  // FALLBACK MCQ
   els.list.innerHTML = `
-    <div class="space-y-6">
+    <div class="space-y-6 text-left">
       <div class="text-xl font-black">Q${idx}: ${cleanKatexMarkers(q.text)}</div>
       <div class="grid gap-3">
         ${["A","B","C","D"].map(o =>
-          generateOptionHtml(q, o, selected, submitted)
+          optionHtml(q,o,selected,submitted,cleanKatexMarkers(q.options[o]))
         ).join("")}
       </div>
     </div>`;
 }
 
 /* -----------------------------------
-   ANSWER LISTENER
+   ANSWERS
 ----------------------------------- */
-export function attachAnswerListeners(handler) {
+export function attachAnswerListeners(fn) {
   initializeElements();
   els.list.onchange = e => {
     if (e.target.type === "radio") {
-      handler(e.target.name.substring(2), e.target.value);
+      fn(e.target.name.substring(2), e.target.value);
     }
   };
 }
 
 /* -----------------------------------
-   NAVIGATION
+   NAV
 ----------------------------------- */
-export function updateNavigation(index, total, submitted) {
-  els.prevButton.classList.toggle("hidden", index === 0);
-  els.nextButton.classList.toggle("hidden", index === total - 1);
-  els.submitButton.classList.toggle("hidden", submitted || index !== total - 1);
-  els.counter.textContent = `${String(index + 1).padStart(2, "0")} / ${total}`;
+export function updateNavigation(i, t, s) {
+  els.prev.classList.toggle("hidden", i === 0);
+  els.next.classList.toggle("hidden", i === t - 1);
+  els.submit.classList.toggle("hidden", s || i !== t - 1);
+  els.counter.textContent = `${String(i + 1).padStart(2, "0")} / ${t}`;
 }
 
 /* -----------------------------------
@@ -204,24 +199,19 @@ export function renderResults() {
   showView("results-screen");
 }
 
-export function renderAllQuestionsForReview(questions, userAnswers) {
+export function renderAllQuestionsForReview(qs, ua) {
   initializeElements();
   els.reviewContainer.classList.remove("hidden");
 
-  els.reviewContainer.innerHTML = questions.map((q, i) => {
-    const ua = userAnswers[q.id];
-    const ca = q.correct_answer;
-    const wrongText = ua ? cleanKatexMarkers(q.options[ua]) : "Not Attempted";
-    const correctText = cleanKatexMarkers(q.options[ca]);
-
+  els.reviewContainer.innerHTML = qs.map((q,i)=>{
+    const w = ua[q.id];
+    const c = q.correct_answer;
     return `
       <div class="p-6 bg-white rounded-xl shadow">
         <p class="font-bold mb-3">Q${i+1}: ${cleanKatexMarkers(q.text)}</p>
-        <p class="text-red-600 font-bold">❌ Your Answer: ${wrongText}</p>
-        <p class="text-green-700 font-bold">✅ Correct Answer: ${correctText}</p>
-        <p class="text-blue-700 text-sm mt-2">
-          🧠 Why: The correct option matches the concept tested in this question.
-        </p>
+        <p class="text-red-600 font-bold">❌ ${cleanKatexMarkers(q.options[w])}</p>
+        <p class="text-green-700 font-bold">✅ ${cleanKatexMarkers(q.options[c])}</p>
+        <p class="text-blue-700 text-sm mt-2">🧠 Correct option follows the concept tested.</p>
       </div>`;
   }).join("");
 
