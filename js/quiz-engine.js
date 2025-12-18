@@ -1,7 +1,5 @@
-// js/quiz-engine.js
 // -----------------------------------------------------------------------------
-// UNIVERSAL QUIZ ENGINE (Class 5–12)
-// - Optimized for high-speed chapter matching and data processing
+// UNIVERSAL QUIZ ENGINE (Class 5–12) - UPDATED FOR CATEGORY ANALYSIS
 // -----------------------------------------------------------------------------
 
 import { initializeServices, getAuthUser } from "./config.js";
@@ -12,7 +10,6 @@ import {
   signInWithGoogle, signOut
 } from "./auth-paywall.js";
 import curriculumData from "./curriculum.js";
-import { getResultFeedback } from "./ui-renderer.js";
 
 const CLASS_ID = "8";
 
@@ -44,8 +41,6 @@ function findCurriculumMatch(topicSlug) {
     curriculumLookupMap = new Map();
     for (const subject in curriculumData) {
       const subjectNode = curriculumData[subject];
-      
-      // Handle both flat arrays and nested book structures
       const categories = Array.isArray(subjectNode) ? { "default": subjectNode } : subjectNode;
       
       for (const key in categories) {
@@ -63,14 +58,12 @@ function findCurriculumMatch(topicSlug) {
 }
 
 // ===========================================================
-// URL + HEADER FORMAT (FIXED SUBJECT CAPTURE)
+// URL + HEADER FORMAT
 // ===========================================================
 function parseUrlParameters() {
   const params = new URLSearchParams(location.search);
   const urlTable = params.get("table") || params.get("topic") || "";
   let urlDiff = params.get("difficulty") || "Simple";
-  
-  // 🔥 FIX: Capture subject from URL if provided, otherwise fallback to lookup
   const urlSubject = params.get("subject");
 
   if (!["Simple","Medium","Advanced"].includes(urlDiff)) urlDiff = "Simple";
@@ -84,8 +77,6 @@ function parseUrlParameters() {
   const match = findCurriculumMatch(quizState.topicSlug);
   
   if (match) {
-    // Priority 1: Use the subject from the URL if it exists
-    // Priority 2: Use the subject found in curriculum lookup
     quizState.subject = urlSubject || match.subject;
     UI.updateHeader(`Class ${quizState.classId}: ${quizState.subject} - ${match.title.replace(/quiz/ig, "").trim()} Worksheet`, quizState.difficulty);
   } else {
@@ -101,7 +92,6 @@ function parseUrlParameters() {
 async function loadQuiz() {
   try {
     UI.showStatus("Fetching questions...");
-    
     const rawQuestions = await fetchQuestions(quizState.topicSlug, quizState.difficulty);
     if (!rawQuestions?.length) throw new Error("No questions found.");
 
@@ -121,7 +111,6 @@ async function loadQuiz() {
     }));
 
     quizState.userAnswers = Object.fromEntries(quizState.questions.map(x => [x.id, null]));
-    
     renderQuestion();
     UI.attachAnswerListeners?.(handleAnswerSelection);
     UI.showView?.("quiz-content");
@@ -161,32 +150,59 @@ async function handleSubmit() {
   if (quizState.isSubmitted) return;
   quizState.isSubmitted = true;
 
-  quizState.score = quizState.questions.filter(q => 
-    quizState.userAnswers[q.id]?.toUpperCase() === q.correct_answer
-  ).length;
+  // Initialize detailed stats object
+  const stats = {
+    total: quizState.questions.length,
+    correct: 0,
+    mcq: { c: 0, w: 0, t: 0 },
+    ar: { c: 0, w: 0, t: 0 },
+    case: { c: 0, w: 0, t: 0 }
+  };
 
+  quizState.questions.forEach(q => {
+    const isCorrect = quizState.userAnswers[q.id]?.toUpperCase() === q.correct_answer;
+    const type = (q.question_type || "").toLowerCase();
+    
+    if (isCorrect) stats.correct++;
+
+    // Categorize question for analysis
+    let category = 'mcq';
+    if (type.includes('ar') || type.includes('assertion')) category = 'ar';
+    else if (type.includes('case')) category = 'case';
+
+    stats[category].t++;
+    if (isCorrect) stats[category].c++;
+    else stats[category].w++;
+  });
+
+  quizState.score = stats.correct;
+
+  // Save detailed analysis to Firebase
   const user = getAuthUser();
   if (user) {
     saveResult({
-      classId: quizState.classId, subject: quizState.subject,
-      topic: quizState.topicSlug, difficulty: quizState.difficulty,
-      score: quizState.score, total: quizState.questions.length,
+      classId: quizState.classId, 
+      subject: quizState.subject,
+      topic: quizState.topicSlug, 
+      difficulty: quizState.difficulty,
+      score: stats.correct, 
+      total: stats.total,
+      breakdown: { // Save category stats to Firestore
+          mcq: stats.mcq,
+          ar: stats.ar,
+          case: stats.case
+      },
       user_answers: quizState.userAnswers
     }).catch(console.warn);
   }
 
-  const feedback = getResultFeedback({ score: quizState.score, total: quizState.questions.length, difficulty: quizState.difficulty });
-  UI.showResults(quizState.score, quizState.questions.length);
-  UI.showResultFeedback?.(feedback, context => {
-    const eventData = {
-      event: "requestMoreQuestions",
-      timestamp: new Date().toISOString(),
-      payload: { ...context, classId: quizState.classId, topic: quizState.topicSlug }
-    };
-    document.dispatchEvent(new CustomEvent('quizEngineEvent', { detail: eventData }));
-    UI.showStatus("Request submitted!", "text-green-700");
-  });
-  UI.renderAllQuestionsForReview?.(quizState.questions, quizState.userAnswers);
+  // Trigger professional results rendering with stats
+  if (typeof UI.renderResults === "function") {
+      UI.renderResults(stats, quizState.difficulty);
+  } else {
+      // Fallback for older renderer versions
+      UI.showResults(quizState.score, quizState.questions.length);
+  }
 }
 
 // ===========================================================
@@ -203,13 +219,21 @@ function attachDomEvents() {
   document.addEventListener("click", e => {
     const b = e.target.closest("button,a");
     if (!b) return;
+
     if (b.id === "prev-btn") return handleNavigation(-1);
     if (b.id === "next-btn") return handleNavigation(1);
     if (b.id === "submit-btn") return handleSubmit();
+    
+    // Auth events
     if (["login-btn","google-signin-btn","paywall-login-btn"].includes(b.id)) return signInWithGoogle();
     if (b.id === "logout-nav-btn") return signOut();
     
-    // 🔥 FIXED: Dynamic Back Button Logic
+    // Results Page Events
+    if (b.id === "btn-review-errors") {
+        UI.renderAllQuestionsForReview?.(quizState.questions, quizState.userAnswers);
+        document.getElementById('review-container')?.classList.toggle('hidden');
+    }
+
     if (b.id === "back-to-chapters-btn") {
       const subject = quizState.subject || "General";
       window.location.href = `chapter-selection.html?subject=${encodeURIComponent(subject)}`;
