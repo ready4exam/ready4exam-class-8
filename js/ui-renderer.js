@@ -15,9 +15,10 @@ const SELECTED_CLS = " border-blue-500 bg-blue-50 shadow-blue-100";
    INTERNAL HELPERS
 ----------------------------------- */
 function normalizeReasonText(txt) {
-  if (!txt) return "";
-  const pattern = /^\s*(Reasoning|Reason|Context|Assertion|Assertion \(A\)|Reason \(R\)|Scenario|Suggestion text|Consider the impact of|Consider the)\s*(\(R\)|\(A\))?\s*[:\-]\s*/gi;
-  return txt.replace(pattern, "").replace(pattern, "").trim();
+  if (!txt || txt === "EMPTY") return "";
+  // Aggressive cleaning to prevent duplicate "Reason (R)" labels
+  const pattern = /^\s*(Reasoning|Reason|Context|Assertion|Assertion \(A\)|Reason \(R\))\s*[:\-]\s*/gi;
+  return txt.replace(pattern, "").trim();
 }
 
 function generateOptionHtml(q, opt, selected, submitted, optionText) {
@@ -65,7 +66,6 @@ export function initializeElements() {
     paywallScreen: document.getElementById("paywall-screen")
   };
 
-  // FIXED: No longer using insertBefore to prevent Node errors
   if (!document.getElementById("review-container") && els.reviewScreen) {
     const rc = document.createElement("div");
     rc.id = "review-container";
@@ -76,53 +76,37 @@ export function initializeElements() {
   isInit = true;
 }
 
-/**
- * Professional Result Rendering with Category Analysis
- */
 export function renderResults(stats, currentLevel) {
     initializeElements();
-    
-    // 1. Switch Views
     showView("results-screen");
-
-    // 2. Update Basic Info
     if (els.score) els.score.textContent = `${stats.correct} / ${stats.total}`;
 
-    // 3. Update Tier Buttons (Try Again Logic)
     const tiers = ['Simple', 'Medium', 'Advanced'];
     tiers.forEach(t => {
         const btn = document.getElementById(`btn-${t.toLowerCase()}`);
         if (btn) btn.innerHTML = (currentLevel === t) ? `🔄 ${t} (Try Again)` : `🚀 ${t}`;
     });
 
-    // 4. Update Curiosity Box
     if (els.curiosityBox) {
         if (currentLevel === 'Simple') {
-            els.curiosityBox.innerHTML = "<b>Foundation Built!</b> You've mastered the basics. Moving to <b>Medium</b> will now test your cause-and-effect reasoning.";
+            els.curiosityBox.innerHTML = "<b>Foundation Built!</b> You've mastered the basics. Moving to <b>Medium</b> will now test your logic.";
         } else if (currentLevel === 'Medium') {
-            els.curiosityBox.innerHTML = "<b>Excellent Logic!</b> You are analyzing connections well. The <b>Advanced</b> tier awaits with high-stakes Case Studies.";
+            els.curiosityBox.innerHTML = "<b>Excellent Logic!</b> The <b>Advanced</b> tier awaits with high-stakes Case Studies.";
         } else {
             const mastery = (stats.correct / stats.total) >= 0.9;
-            els.curiosityBox.innerHTML = mastery ? 
-                "🔥 <b>LEGENDARY MASTERY!</b> You have conquered the peak. Mastery questions are now unlocked below." : 
-                "<b>Peak Performance!</b> You are inches away from Mastery. Reach 90% in Advanced to unlock the Elite Bank.";
-            if (mastery) document.getElementById('btn-mastery')?.classList.remove('hidden');
+            els.curiosityBox.innerHTML = mastery ? "🔥 <b>LEGENDARY MASTERY!</b>" : "<b>So close!</b> Reach 90% for Mastery.";
         }
     }
 
-    // 5. Setup Cognitive Feedback Modal
     const analysisBtn = document.getElementById('btn-show-analysis');
     if (analysisBtn) {
         analysisBtn.onclick = () => {
-            if (!els.analysisModal || !els.analysisContent) return;
-            
             const rows = [];
             const categories = [
                 { key: 'mcq', label: 'MCQ (Basic Facts)' },
                 { key: 'ar', label: 'Assertion-Reason (Logic)' },
                 { key: 'case', label: 'Case-Based (Context)' }
             ];
-
             categories.forEach(cat => {
                 const data = stats[cat.key];
                 if (data && data.t > 0) {
@@ -132,49 +116,109 @@ export function renderResults(stats, currentLevel) {
                             <td class="py-4 font-bold text-gray-700">${cat.label}</td>
                             <td class="text-center">${data.c}</td>
                             <td class="text-center text-red-500">${data.w}</td>
-                            <td class="text-right"><span class="px-3 py-1 bg-blue-50 text-blue-700 rounded-lg font-bold">${acc}%</span></td>
-                        </tr>
-                    `);
+                            <td class="text-right font-bold text-blue-700">${acc}%</td>
+                        </tr>`);
                 }
             });
-
-            els.analysisContent.innerHTML = `
-                <table class="w-full mb-8">
-                    <thead>
-                        <tr class="text-xs uppercase text-gray-400 border-b">
-                            <th class="text-left pb-2">Category</th>
-                            <th class="pb-2">Correct</th>
-                            <th class="pb-2">Wrong</th>
-                            <th class="text-right pb-2">Accuracy</th>
-                        </tr>
-                    </thead>
-                    <tbody>${rows.join('')}</tbody>
-                </table>
-                <div class="space-y-4">
-                    <div class="p-4 bg-green-50 rounded-2xl border border-green-100">
-                        <h4 class="text-xs font-black text-green-700 uppercase mb-1">What is Strong</h4>
-                        <p class="text-sm text-green-900 font-medium">${stats.correct/stats.total > 0.7 ? 'Concept Application: You apply theory to practice effectively.' : 'Foundational Recall: Your core definitions are solid.'}</p>
-                    </div>
-                    <div class="p-4 bg-red-50 rounded-2xl border border-red-100">
-                        <h4 class="text-xs font-black text-red-700 uppercase mb-1">Needs Improvement</h4>
-                        <p class="text-sm text-red-900 font-medium">${stats.ar.w > stats.mcq.w ? 'Logical Linking: Use the "Because Test" for Assertion-Reason questions.' : 'Fact Precision: Focus on keywords in multiple choice options.'}</p>
-                    </div>
-                </div>
-            `;
+            els.analysisContent.innerHTML = `<table class="w-full"><tbody>${rows.join('')}</tbody></table>`;
             els.analysisModal.classList.remove('hidden');
         };
     }
 }
 
-/* -----------------------------------
-   STATUS & HEADER UPDATES
------------------------------------ */
+export function renderQuestion(q, idxOneBased, selected, submitted) {
+  initializeElements();
+  if (!els.list) return;
+  const type = (q.question_type || "").toLowerCase();
+
+  // 1. ASSERTION-REASON LAYOUT
+  if (type.includes("ar") || type.includes("assertion") || q.text.toLowerCase().includes("assertion")) {
+    const assertion = q.text.replace(/Assertion \(A\):/gi, "").trim();
+    const reason = normalizeReasonText(q.scenario_reason);
+    const arOptions = {
+      A: "Both A and R are true and R is the correct explanation of A.",
+      B: "Both A and R are true but R is not the correct explanation of A.",
+      C: "A is true but R is false.",
+      D: "A is false but R is true.",
+    };
+    const html = ["A", "B", "C", "D"].map(o => generateOptionHtml(q, o, selected, submitted, arOptions[o])).join("");
+    els.list.innerHTML = `
+      <div class="space-y-6 animate-fadeIn">
+        <div>
+          <div class="text-xl font-extrabold text-gray-900 mb-4">Q${idxOneBased}. Assertion (A): ${assertion}</div>
+          <div class="bg-blue-50/50 p-5 rounded-2xl border-l-4 border-cbse-blue">
+            <span class="text-cbse-blue font-black uppercase text-[10px] block mb-1">Reason (R)</span>
+            <div class="text-gray-800 font-medium">${reason}</div>
+          </div>
+        </div>
+        <div class="grid gap-3">${html}</div>
+      </div>`;
+    return;
+  }
+
+  // 2. TWO-PANE CASE BASED LAYOUT
+  if (type.includes("case") || (q.scenario_reason && q.scenario_reason !== "EMPTY")) {
+    const html = ["A", "B", "C", "D"].map(o => generateOptionHtml(q, o, selected, submitted)).join("");
+    els.list.innerHTML = `
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-8 animate-fadeIn">
+        <div class="p-6 bg-gray-50 rounded-2xl border border-gray-100 max-h-[60vh] overflow-y-auto">
+          <h3 class="font-black mb-4 text-cbse-blue uppercase text-xs tracking-widest border-b pb-2">Context</h3>
+          <p class="text-gray-800 leading-relaxed font-medium">${q.scenario_reason}</p>
+        </div>
+        <div class="space-y-6">
+          <div class="text-xl font-extrabold text-gray-900">Q${idxOneBased}: ${q.text}</div>
+          <div class="grid gap-3">${html}</div>
+        </div>
+      </div>`;
+    return;
+  }
+
+  // 3. STANDARD MCQ
+  const html = ["A", "B", "C", "D"].map(o => generateOptionHtml(q, o, selected, submitted)).join("");
+  els.list.innerHTML = `
+    <div class="space-y-6 animate-fadeIn">
+      <div class="text-xl font-extrabold text-gray-900">Q${idxOneBased}: ${q.text}</div>
+      <div class="grid gap-3">${html}</div>
+    </div>`;
+}
+
+// FIXED: Mistake Review Button now shows correct question data
+export function renderAllQuestionsForReview(questions, userAnswers = {}) {
+  initializeElements();
+  if (!els.reviewContainer) return;
+  els.reviewContainer.classList.remove('hidden');
+  
+  const html = questions.map((q, i) => {
+    const ca = (q.correct_answer || "").toUpperCase();
+    const ua = (userAnswers[q.id] || "").toUpperCase();
+    const isCorrect = ua === ca;
+    
+    // Clean text specifically for the review list
+    const cleanText = q.text.replace(/Assertion \(A\):/gi, "A:").trim();
+
+    return `
+      <div class="p-6 bg-white rounded-2xl border border-gray-100 shadow-sm mb-4">
+        <p class="font-black text-gray-800 mb-3 text-lg">Q${i + 1}: ${cleanKatexMarkers(cleanText)}</p>
+        <div class="flex flex-wrap gap-4 text-sm font-bold">
+          <span class="px-4 py-2 rounded-xl ${isCorrect ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
+            Your Answer: ${ua || "Not Attempted"}
+          </span>
+          ${!isCorrect ? `<span class="px-4 py-2 rounded-xl bg-green-600 text-white">Correct: ${ca}</span>` : ""}
+        </div>
+      </div>`;
+  }).join("");
+
+  els.reviewContainer.innerHTML = `<h3 class="text-xs font-black text-gray-400 uppercase tracking-widest mb-6">Detailed Answer Key</h3>${html}`;
+  els.reviewContainer.scrollIntoView({ behavior: 'smooth' });
+}
+
 export function showStatus(msg, cls = "text-gray-700") {
   initializeElements();
-  if (!els.status) return;
-  els.status.innerHTML = msg;
-  els.status.className = `p-3 text-center font-semibold ${cls}`;
-  els.status.classList.remove("hidden");
+  if (els.status) {
+    els.status.innerHTML = msg;
+    els.status.className = `p-3 text-center font-semibold ${cls}`;
+    els.status.classList.remove("hidden");
+  }
 }
 
 export function hideStatus() {
@@ -188,52 +232,6 @@ export function updateHeader(topicDisplayTitle, diff) {
   if (els.diffBadge) els.diffBadge.textContent = `Difficulty: ${diff || "--"}`;
 }
 
-/* -----------------------------------
-   QUESTION RENDERING
------------------------------------ */
-export function renderQuestion(q, idxOneBased, selected, submitted) {
-  initializeElements();
-  if (!els.list) return;
-  const type = (q.question_type || "").toLowerCase();
-
-  // Assertion-Reason Template
-  if (type === "ar" || q.text.toLowerCase().includes("assertion")) {
-    const assertion = normalizeReasonText(cleanKatexMarkers(q.text));
-    const reason = normalizeReasonText(cleanKatexMarkers(q.scenario_reason || q.explanation));
-    const arOptions = {
-      A: "Both A and R are true and R is the correct explanation of A.",
-      B: "Both A and R are true but R is not the correct explanation of A.",
-      C: "A is true but R is false.",
-      D: "A is false but R is true.",
-    };
-    const html = ["A", "B", "C", "D"].map(o => generateOptionHtml(q, o, selected, submitted, arOptions[o])).join("");
-    els.list.innerHTML = `
-      <div class="space-y-6 animate-fadeIn text-left">
-        <div>
-          <div class="text-xl font-extrabold text-gray-900 leading-snug mb-4">Q${idxOneBased}. Assertion (A): ${assertion}</div>
-          <div class="bg-blue-50/50 p-5 rounded-2xl border-l-4 border-cbse-blue shadow-sm">
-            <span class="text-cbse-blue font-black uppercase text-[10px] block mb-1 tracking-widest">Reason (R)</span>
-            <div class="text-gray-800 leading-relaxed font-medium">${reason}</div>
-          </div>
-        </div>
-        <div class="grid grid-cols-1 gap-3">${html}</div>
-      </div>`;
-    return;
-  }
-
-  // Standard MCQ Template
-  const qText = cleanKatexMarkers(q.text);
-  const html = ["A", "B", "C", "D"].map(o => generateOptionHtml(q, o, selected, submitted)).join("");
-  els.list.innerHTML = `
-    <div class="space-y-6 animate-fadeIn text-left">
-      <div class="text-xl font-extrabold text-gray-900 leading-snug">Q${idxOneBased}: ${qText}</div>
-      <div class="grid grid-cols-1 gap-3">${html}</div>
-    </div>`;
-}
-
-/* -----------------------------------
-   NAVIGATION & LISTENERS
------------------------------------ */
 export function attachAnswerListeners(handler) {
   initializeElements();
   if (!els.list) return;
@@ -265,24 +263,4 @@ export function updateAuthUI(user) {
     els.welcomeUser.textContent = `Welcome, ${user.email.split('@')[0]}`;
     els.welcomeUser.classList.remove("hidden");
   }
-}
-
-export function renderAllQuestionsForReview(questions, userAnswers = {}) {
-  initializeElements();
-  if (!els.reviewContainer) return;
-  els.reviewContainer.classList.remove('hidden');
-  const html = questions.map((q, i) => {
-    const ca = (q.correct_answer || "").toUpperCase();
-    const ua = (userAnswers[q.id] || "").toUpperCase();
-    const isCorrect = ua === ca;
-    return `
-      <div class="p-6 bg-white rounded-2xl border border-gray-100 shadow-sm">
-        <p class="font-black text-gray-800 mb-3 text-lg">Q${i + 1}: ${cleanKatexMarkers(q.text)}</p>
-        <div class="flex gap-4 text-sm font-bold">
-          <span class="px-3 py-1 rounded-lg ${isCorrect ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">Your: ${ua || "N/A"}</span>
-          <span class="px-3 py-1 rounded-lg bg-gray-100 text-gray-600">Correct: ${ca}</span>
-        </div>
-      </div>`;
-  }).join("");
-  els.reviewContainer.innerHTML = `<h3 class="text-xs font-black text-gray-400 uppercase tracking-widest mb-4">Detailed Question Review</h3>${html}`;
 }
