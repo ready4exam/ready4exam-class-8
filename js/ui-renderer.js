@@ -65,6 +65,33 @@ export function initializeElements() {
 }
 
 /* -----------------------------------
+   STATUS MESSAGE HANDLER (FIX)
+----------------------------------- */
+export function showStatus(message = "", type = "info") {
+  initializeElements();
+  if (!els.status) return;
+
+  const base =
+    "px-4 py-2 rounded-md text-sm font-medium transition";
+
+  const styles = {
+    info: "bg-blue-50 text-blue-700 border border-blue-200",
+    success: "bg-green-50 text-green-700 border border-green-200",
+    error: "bg-red-50 text-red-700 border border-red-200",
+    warning: "bg-yellow-50 text-yellow-700 border border-yellow-200",
+  };
+
+  els.status.className = `${base} ${styles[type] || styles.info}`;
+  els.status.textContent = message;
+  els.status.classList.remove("hidden");
+}
+
+export function hideStatus() {
+  initializeElements();
+  if (els.status) els.status.classList.add("hidden");
+}
+
+/* -----------------------------------
    LOADING OVERLAY
 ----------------------------------- */
 export function showAuthLoading(message = "Preparing your challenge...") {
@@ -75,7 +102,7 @@ export function showAuthLoading(message = "Preparing your challenge...") {
     overlay = document.createElement("div");
     overlay.id = "auth-loading-overlay";
     overlay.className =
-      "fixed inset-0 bg-white flex flex-col items-center justify-center z-50 animate-fadeIn";
+      "fixed inset-0 bg-white flex flex-col items-center justify-center z-50";
 
     overlay.innerHTML = `
       <div class="flex flex-col items-center max-w-sm px-6 text-center">
@@ -84,19 +111,17 @@ export function showAuthLoading(message = "Preparing your challenge...") {
           <div class="relative bg-blue-600 p-6 rounded-full shadow-xl">
             <svg class="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253">
+                d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13">
               </path>
             </svg>
           </div>
         </div>
-
         <h2 class="text-2xl font-bold text-gray-800 mb-2">
           Think Like a Pro!
         </h2>
         <p class="text-blue-600 font-medium animate-pulse mb-6">
           ${message}
         </p>
-
         <div class="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
           <div class="bg-blue-600 h-full animate-progress-bar"></div>
         </div>
@@ -164,8 +189,7 @@ export function renderQuestion(q, idxOneBased, selected, submitted) {
     id: q.id,
     question_type: (q.question_type || q.type || "").toLowerCase(),
     text: q.text || q.question_text || q.prompt || "",
-    scenario_reason:
-      q.scenario_reason || q.context || q.passage || "",
+    scenario_reason: q.scenario_reason || q.context || q.passage || "",
     explanation: q.explanation || q.reason || "",
     correct_answer: (q.correct_answer || q.answer || "").toUpperCase(),
     options: {
@@ -179,11 +203,9 @@ export function renderQuestion(q, idxOneBased, selected, submitted) {
   const type = mapped.question_type;
   const optKeys = ["A", "B", "C", "D"];
 
-  /* ================= ASSERTION–REASON ================= */
+  /* ============ ASSERTION–REASON ============ */
   if (type === "ar" || mapped.text.toLowerCase().includes("assertion")) {
-    const assertion = normalizeReasonText(
-      cleanKatexMarkers(mapped.text)
-    );
+    const assertion = normalizeReasonText(cleanKatexMarkers(mapped.text));
     const reason = normalizeReasonText(
       cleanKatexMarkers(mapped.scenario_reason || mapped.explanation)
     );
@@ -196,123 +218,79 @@ export function renderQuestion(q, idxOneBased, selected, submitted) {
     };
 
     const html = optKeys
-      .map((opt) =>
+      .map(opt =>
         generateOptionHtml(mapped, opt, selected, submitted, arOptions[opt])
       )
       .join("");
 
     els.list.innerHTML = `
-      <div class="space-y-6 animate-fadeIn">
-        <div class="p-4 bg-white rounded-lg border border-gray-200">
-          <div class="text-lg font-bold text-gray-900 mb-3">
-            Q${idxOneBased}.
-          </div>
-
-          <div class="mb-3">
-            <span class="font-bold">Assertion (A):</span>
-            ${assertion}
-          </div>
-
-          <div class="bg-gray-50 p-3 rounded border-l-4 border-blue-500">
-            <span class="text-blue-800 font-bold uppercase text-xs block mb-1">
-              Reason (R)
-            </span>
+      <div class="space-y-6">
+        <div class="p-4 bg-white rounded border">
+          <div class="font-bold mb-2">Q${idxOneBased}.</div>
+          <div class="mb-3"><b>Assertion (A):</b> ${assertion}</div>
+          <div class="bg-gray-50 p-3 border-l-4 border-blue-500">
+            <span class="font-bold text-xs uppercase block mb-1">Reason (R)</span>
             ${reason}
           </div>
         </div>
-
-        <div>
-          <p class="font-bold text-gray-700 text-sm mb-3 uppercase">
-            Mark the correct choice:
-          </p>
-          <div class="space-y-3">${html}</div>
-        </div>
+        <div class="space-y-3">${html}</div>
       </div>
     `;
     return;
   }
 
-  /* ================= CASE BASED ================= */
+  /* ============ CASE BASED ============ */
   if (type === "case" || type === "case based") {
-    const scenario = normalizeReasonText(
-      cleanKatexMarkers(mapped.scenario_reason)
-    );
+    const scenario = normalizeReasonText(cleanKatexMarkers(mapped.scenario_reason));
     const question = cleanKatexMarkers(mapped.text);
-    const hint = normalizeReasonText(
-      cleanKatexMarkers(mapped.explanation)
-    );
+    const hint = normalizeReasonText(cleanKatexMarkers(mapped.explanation));
 
     const optionsHtml = optKeys
-      .map((opt) =>
-        generateOptionHtml(mapped, opt, selected, submitted)
-      )
+      .map(opt => generateOptionHtml(mapped, opt, selected, submitted))
       .join("");
 
-    const hintHtml =
-      hint && !submitted
-        ? `
-        <div class="mt-4 p-3 bg-blue-50 border border-blue-100 rounded text-gray-700 text-sm">
-          <span class="font-bold text-blue-700 uppercase text-xs block mb-1">
-            Hint
-          </span>
-          ${hint}
-        </div>`
-        : "";
-
     els.list.innerHTML = `
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-8 animate-fadeIn">
-        <div class="p-5 bg-gray-50 rounded-xl border border-gray-200 max-h-96 overflow-y-auto">
-          <h3 class="font-bold mb-3 text-indigo-700 uppercase text-xs border-b pb-2">
-            Context
-          </h3>
-          <p class="text-gray-800 text-sm leading-relaxed">
-            ${scenario}
-          </p>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="bg-gray-50 p-4 border rounded">
+          <b>Context</b>
+          <p class="mt-2 text-sm">${scenario}</p>
         </div>
-
-        <div class="space-y-6">
-          <div class="text-lg font-bold">
-            Q${idxOneBased}: ${question}
-          </div>
+        <div>
+          <div class="font-bold mb-3">Q${idxOneBased}: ${question}</div>
           <div class="space-y-3">${optionsHtml}</div>
-          ${hintHtml}
+          ${
+            hint && !submitted
+              ? `<div class="mt-4 p-3 bg-blue-50 border rounded text-sm">
+                   <b>Hint:</b> ${hint}
+                 </div>`
+              : ""
+          }
         </div>
       </div>
     `;
     return;
   }
 
-  /* ================= NORMAL MCQ ================= */
+  /* ============ NORMAL MCQ ============ */
   const qText = cleanKatexMarkers(mapped.text);
-  const reason = normalizeReasonText(
-    cleanKatexMarkers(mapped.explanation)
-  );
+  const reason = normalizeReasonText(cleanKatexMarkers(mapped.explanation));
 
   const optionsHtml = optKeys
-    .map((opt) =>
-      generateOptionHtml(mapped, opt, selected, submitted)
-    )
+    .map(opt => generateOptionHtml(mapped, opt, selected, submitted))
     .join("");
 
   els.list.innerHTML = `
-    <div class="space-y-6 animate-fadeIn">
-      <div class="text-lg font-bold">
-        Q${idxOneBased}: ${qText}
-      </div>
-
-      ${reason && !submitted
-        ? `<div class="text-sm italic bg-gray-50 p-2 rounded">
-             <b>Hint:</b> ${reason}
-           </div>`
-        : ""}
-
+    <div class="space-y-6">
+      <div class="font-bold">Q${idxOneBased}: ${qText}</div>
+      ${reason && !submitted ? `<div class="text-sm italic">Hint: ${reason}</div>` : ""}
       <div class="space-y-3">${optionsHtml}</div>
-
-      ${submitted && reason
-        ? `<div class="mt-3 p-3 bg-gray-50 border rounded text-sm">
-             <b>Reasoning:</b> ${reason}
-           </div>`
-        : ""}
+      ${
+        submitted && reason
+          ? `<div class="mt-3 p-3 bg-gray-50 border text-sm">
+               <b>Reasoning:</b> ${reason}
+             </div>`
+          : ""
+      }
     </div>
   `;
 }
@@ -353,7 +331,7 @@ export function updateNavigation(index, total, submitted) {
 }
 
 /* -----------------------------------
-   RESULTS
+   RESULTS + VIEW
 ----------------------------------- */
 export function showResults(score, total) {
   initializeElements();
@@ -361,9 +339,6 @@ export function showResults(score, total) {
   showView("results-screen");
 }
 
-/* -----------------------------------
-   VIEW SWITCHER
------------------------------------ */
 export function showView(viewName) {
   initializeElements();
   const views = {
@@ -372,6 +347,6 @@ export function showView(viewName) {
     "paywall-screen": els.paywallScreen,
   };
 
-  Object.values(views).forEach((v) => v?.classList.add("hidden"));
+  Object.values(views).forEach(v => v?.classList.add("hidden"));
   views[viewName]?.classList.remove("hidden");
 }
