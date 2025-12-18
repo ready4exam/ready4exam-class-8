@@ -32,7 +32,7 @@ let quizState = {
 };
 
 // ===========================================================
-// SPEED HACK 1: SMART CHAPTER LOOKUP (Map Indexing)
+// SMART CHAPTER LOOKUP
 // ===========================================================
 let curriculumLookupMap = null;
 
@@ -40,31 +40,38 @@ function findCurriculumMatch(topicSlug) {
   const clean = s => s?.toLowerCase().replace(/quiz/g, "").replace(/[_\s-]/g, "").trim();
   const target = clean(topicSlug);
 
-  // Index the curriculum only once per session
   if (!curriculumLookupMap) {
     curriculumLookupMap = new Map();
     for (const subject in curriculumData) {
-      for (const unit in curriculumData[subject]) {
-        for (const ch of curriculumData[subject][unit]) {
-          const val = { subject, title: ch.chapter_title };
-          // Index by both ID and Title for 100% match rate
-          if (ch.table_id) curriculumLookupMap.set(clean(ch.table_id), val);
-          if (ch.chapter_title) curriculumLookupMap.set(clean(ch.chapter_title), val);
+      const subjectNode = curriculumData[subject];
+      
+      // Handle both flat arrays and nested book structures
+      const categories = Array.isArray(subjectNode) ? { "default": subjectNode } : subjectNode;
+      
+      for (const key in categories) {
+        if (Array.isArray(categories[key])) {
+          for (const ch of categories[key]) {
+            const val = { subject, title: ch.chapter_title };
+            if (ch.table_id) curriculumLookupMap.set(clean(ch.table_id), val);
+            if (ch.chapter_title) curriculumLookupMap.set(clean(ch.chapter_title), val);
+          }
         }
       }
     }
   }
-  // Instant O(1) lookup
   return curriculumLookupMap.get(target) || null;
 }
 
 // ===========================================================
-// URL + HEADER FORMAT
+// URL + HEADER FORMAT (FIXED SUBJECT CAPTURE)
 // ===========================================================
 function parseUrlParameters() {
   const params = new URLSearchParams(location.search);
   const urlTable = params.get("table") || params.get("topic") || "";
   let urlDiff = params.get("difficulty") || "Simple";
+  
+  // 🔥 FIX: Capture subject from URL if provided, otherwise fallback to lookup
+  const urlSubject = params.get("subject");
 
   if (!["Simple","Medium","Advanced"].includes(urlDiff)) urlDiff = "Simple";
 
@@ -75,28 +82,29 @@ function parseUrlParameters() {
   if (!quizState.topicSlug) throw new Error("Topic not provided");
 
   const match = findCurriculumMatch(quizState.topicSlug);
+  
   if (match) {
-    quizState.subject = match.subject;
+    // Priority 1: Use the subject from the URL if it exists
+    // Priority 2: Use the subject found in curriculum lookup
+    quizState.subject = urlSubject || match.subject;
     UI.updateHeader(`Class ${quizState.classId}: ${quizState.subject} - ${match.title.replace(/quiz/ig, "").trim()} Worksheet`, quizState.difficulty);
   } else {
-    quizState.subject = "General";
+    quizState.subject = urlSubject || "General";
     const pretty = quizState.topicSlug.replace(/[_\d]/g, " ").replace(/quiz/ig, "").trim().replace(/\b\w/g, c => c.toUpperCase());
     UI.updateHeader(`Class ${quizState.classId}: ${pretty} Worksheet`, quizState.difficulty);
   }
 }
 
 // ===========================================================
-// SPEED HACK 2: OPTIMIZED LOADING (Pre-processing)
+// OPTIMIZED LOADING
 // ===========================================================
 async function loadQuiz() {
   try {
     UI.showStatus("Fetching questions...");
     
-    // Step 1: Network Request
     const rawQuestions = await fetchQuestions(quizState.topicSlug, quizState.difficulty);
     if (!rawQuestions?.length) throw new Error("No questions found.");
 
-    // Step 2: Immediate Data Normalization (Prevents lag during quiz navigation)
     quizState.questions = rawQuestions.map(q => ({
       id: q.id,
       question_type: (q.question_type || q.type || "").toLowerCase(),
@@ -114,7 +122,6 @@ async function loadQuiz() {
 
     quizState.userAnswers = Object.fromEntries(quizState.questions.map(x => [x.id, null]));
     
-    // Step 3: Instant Render
     renderQuestion();
     UI.attachAnswerListeners?.(handleAnswerSelection);
     UI.showView?.("quiz-content");
@@ -201,8 +208,11 @@ function attachDomEvents() {
     if (b.id === "submit-btn") return handleSubmit();
     if (["login-btn","google-signin-btn","paywall-login-btn"].includes(b.id)) return signInWithGoogle();
     if (b.id === "logout-nav-btn") return signOut();
+    
+    // 🔥 FIXED: Dynamic Back Button Logic
     if (b.id === "back-to-chapters-btn") {
-      location.href = quizState.subject ? `chapter-selection.html?subject=${quizState.subject}` : "chapter-selection.html";
+      const subject = quizState.subject || "General";
+      window.location.href = `chapter-selection.html?subject=${encodeURIComponent(subject)}`;
     }
   });
 }
