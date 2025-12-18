@@ -17,7 +17,7 @@ const SELECTED_CLS = " border-blue-500 bg-blue-50";
 ----------------------------------- */
 function normalizeReasonText(txt) {
   if (!txt) return "";
-  // Removes raw prefixes from database content to prevent duplication
+  // Aggressive cleaning to prevent duplicate labels
   const pattern = /^\s*(Reasoning|Reason|Context|Assertion|Assertion \(A\)|Reason \(R\)|Scenario|Suggestion text|Consider the impact of|Consider the)\s*(\(R\)|\(A\))?\s*[:\-]\s*/gi;
   return txt.replace(pattern, "").replace(pattern, "").trim();
 }
@@ -43,9 +43,6 @@ function generateOptionHtml(q, opt, selected, submitted, optionText) {
    CORE EXPORTS (REQUIRED BY QUIZ-ENGINE.JS)
 ----------------------------------- */
 
-/**
- * Initializes DOM element references once
- */
 export function initializeElements() {
   if (isInit) return;
   els = {
@@ -149,42 +146,29 @@ export function renderQuestion(q, idxOneBased, selected, submitted) {
   initializeElements();
   if (!els.list) return;
 
-  const mapped = {
-    id: q.id,
-    question_type: (q.question_type || q.type || "").toLowerCase(),
-    text: q.text || q.question_text || q.prompt || "",
-    scenario_reason: q.scenario_reason || q.context || q.passage || "",
-    explanation: q.explanation || q.reason || "",
-    correct_answer: (q.correct_answer || q.answer || "").toUpperCase(),
-    options: {
-      A: q.options?.A || q.option_a || "",
-      B: q.options?.B || q.option_b || "",
-      C: q.options?.C || q.option_c || "",
-      D: q.options?.D || q.option_d || "",
-    }
-  };
+  const type = (q.question_type || "").toLowerCase();
 
-  const type = mapped.question_type;
-
-  /* ================= ASSERTION–REASON (FIXED LAYOUT) ================= */
-  if (type === "ar" || mapped.text.toLowerCase().includes("assertion")) {
-    const assertion = normalizeReasonText(cleanKatexMarkers(mapped.text));
-    const reason = normalizeReasonText(cleanKatexMarkers(mapped.scenario_reason || mapped.explanation));
+  /* ================= ASSERTION–REASON (FIXED) ================= */
+  if (type === "ar" || q.text.toLowerCase().includes("assertion")) {
+    const assertion = normalizeReasonText(cleanKatexMarkers(q.text));
+    const reason = normalizeReasonText(cleanKatexMarkers(q.scenario_reason || q.explanation));
     const arOptions = {
       A: "Both A and R are true and R is the correct explanation of A.",
       B: "Both A and R are true but R is not the correct explanation of A.",
       C: "A is true but R is false.",
       D: "A is false but R is true.",
     };
-    const html = ["A", "B", "C", "D"].map(o => generateOptionHtml(mapped, o, selected, submitted, arOptions[o])).join("");
+    const html = ["A", "B", "C", "D"].map(o => generateOptionHtml(q, o, selected, submitted, arOptions[o])).join("");
 
     els.list.innerHTML = `
-      <div class="space-y-6 animate-fadeIn">
-        <div class="p-4 bg-white rounded-lg border border-gray-200">
-          <div class="text-lg font-bold text-gray-900 mb-3">Q${idxOneBased}. Assertion (A): ${assertion}</div>
+      <div class="space-y-6 animate-fadeIn text-left">
+        <div>
+          <div class="text-lg font-bold text-gray-900 leading-relaxed mb-4">
+            Q${idxOneBased}. Assertion (A): ${assertion}
+          </div>
           <div class="bg-gray-50 p-3 rounded border-l-4 border-blue-500">
             <span class="text-blue-800 font-bold uppercase text-xs block mb-1">Reason (R)</span>
-            ${reason}
+            <div class="text-gray-800 leading-relaxed">${reason}</div>
           </div>
         </div>
         <div class="space-y-3">${html}</div>
@@ -192,21 +176,21 @@ export function renderQuestion(q, idxOneBased, selected, submitted) {
     return;
   }
 
-  /* ================= CASE BASED (USING "HINT") ================= */
+  /* ================= CASE BASED (USING HINT) ================= */
   if (type.includes("case")) {
-    const scenario = normalizeReasonText(cleanKatexMarkers(mapped.scenario_reason));
-    const question = cleanKatexMarkers(mapped.text);
-    const hint = normalizeReasonText(cleanKatexMarkers(mapped.explanation));
-    const html = ["A", "B", "C", "D"].map(o => generateOptionHtml(mapped, o, selected, submitted)).join("");
+    const scenario = normalizeReasonText(cleanKatexMarkers(q.scenario_reason));
+    const question = cleanKatexMarkers(q.text);
+    const hint = normalizeReasonText(cleanKatexMarkers(q.explanation));
+    const html = ["A", "B", "C", "D"].map(o => generateOptionHtml(q, o, selected, submitted)).join("");
 
     els.list.innerHTML = `
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-8 animate-fadeIn">
-        <div class="p-5 bg-gray-50 rounded-xl border border-gray-200 max-h-96 overflow-y-auto">
-          <h3 class="font-bold mb-3 text-indigo-700 uppercase text-xs border-b pb-2">Context</h3>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-8 animate-fadeIn text-left">
+        <div class="p-5 bg-gray-50 rounded-xl border border-gray-200 max-h-96 overflow-y-auto shadow-inner">
+          <h3 class="font-bold mb-3 text-indigo-700 uppercase text-xs border-b pb-2 tracking-wider">Context</h3>
           <p class="text-gray-800 text-sm leading-relaxed">${scenario}</p>
         </div>
         <div class="space-y-6">
-          <div class="text-lg font-bold">Q${idxOneBased}: ${question}</div>
+          <div class="text-lg font-bold text-gray-900 leading-relaxed">Q${idxOneBased}: ${question}</div>
           <div class="space-y-3">${html}</div>
           ${hint && !submitted ? `<div class="mt-4 p-3 bg-blue-50 border border-blue-100 rounded text-gray-700 text-sm"><span class="font-bold text-blue-700 uppercase text-xs block mb-1">💡 Hint</span>${hint}</div>` : ""}
         </div>
@@ -215,14 +199,14 @@ export function renderQuestion(q, idxOneBased, selected, submitted) {
   }
 
   /* ================= NORMAL MCQ ================= */
-  const qText = cleanKatexMarkers(mapped.text);
-  const hint = normalizeReasonText(cleanKatexMarkers(mapped.explanation));
-  const html = ["A", "B", "C", "D"].map(o => generateOptionHtml(mapped, o, selected, submitted)).join("");
+  const qText = cleanKatexMarkers(q.text);
+  const hint = normalizeReasonText(cleanKatexMarkers(q.explanation));
+  const html = ["A", "B", "C", "D"].map(o => generateOptionHtml(q, o, selected, submitted)).join("");
 
   els.list.innerHTML = `
-    <div class="space-y-6 animate-fadeIn">
-      <div class="text-lg font-bold">Q${idxOneBased}: ${qText}</div>
-      ${hint && !submitted ? `<div class="text-sm italic bg-gray-50 p-2 rounded"><b>💡 Hint:</b> ${hint}</div>` : ""}
+    <div class="space-y-6 animate-fadeIn text-left">
+      <div class="text-lg font-bold text-gray-900 leading-relaxed">Q${idxOneBased}: ${qText}</div>
+      ${hint && !submitted ? `<div class="text-sm italic bg-gray-50 p-2 rounded text-gray-600"><b>💡 Hint:</b> ${hint}</div>` : ""}
       <div class="space-y-3">${html}</div>
     </div>`;
 }
@@ -278,4 +262,40 @@ export function updateAuthUI(user) {
     welcomeEl.classList.add("hidden");
     document.getElementById("logout-nav-btn")?.classList.add("hidden");
   }
+}
+
+export function showResultFeedback(feedback, requestMoreHandler) {
+  initializeElements();
+  if (!els.reviewScreen) return;
+  let container = document.getElementById("result-feedback-container");
+  if (container) container.remove();
+  container = document.createElement("div");
+  container.id = "result-feedback-container";
+  container.className = "w-full max-w-3xl mx-auto mt-6 p-5 rounded-lg border border-indigo-100 bg-indigo-50 text-center";
+  container.innerHTML = `<h3 class="text-xl font-bold text-indigo-800 mb-2">${feedback.title}</h3><p class="text-gray-700 mb-2">${feedback.message}</p><p class="text-xs text-indigo-600 font-semibold italic mb-4">Mastery unlocked.</p>`;
+  if (feedback.percentage >= 90) {
+    const btn = document.createElement("button");
+    btn.className = "bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-full transition shadow-md";
+    btn.textContent = "Request Challenging Questions";
+    btn.onclick = () => requestMoreHandler(feedback);
+    container.appendChild(btn);
+  }
+  els.reviewScreen.insertBefore(container, els.reviewScreen.querySelector(".flex") || null);
+}
+
+export function renderAllQuestionsForReview(questions, userAnswers = {}) {
+  initializeElements();
+  if (!els.reviewContainer) return;
+  const html = questions.map((q, i) => {
+    const ca = (q.correct_answer || "").toUpperCase();
+    const ua = (userAnswers[q.id] || "").toUpperCase();
+    const correct = ua === ca;
+    return `
+      <div class="mb-5 p-4 bg-white rounded-lg border border-gray-100 shadow-sm animate-fadeIn">
+        <p class="font-bold text-base mb-2">Q${i + 1}: ${cleanKatexMarkers(q.text)}</p>
+        <p class="text-sm">Your Answer: <span class="${correct ? 'text-green-600' : 'text-red-600'} font-bold">${ua || "No Attempt"}</span></p>
+        <p class="text-sm">Correct Answer: <span class="text-green-700 font-bold">${ca}</span></p>
+      </div>`;
+  }).join("");
+  els.reviewContainer.innerHTML = html;
 }
