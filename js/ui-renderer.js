@@ -12,7 +12,7 @@ const SELECTED_CLS = " border-blue-500 bg-blue-50";
 
 /**
  * CLEANER: Aggressively strips hardcoded labels from raw strings.
- * Prevents duplication and removes "Consider the impact..." suggestion text.
+ * Prevents "Assertion (A): Assertion (A):" and removes redundant "Suggestion text".
  */
 function normalizeReasonText(txt) {
   if (!txt) return "";
@@ -57,35 +57,6 @@ export function initializeElements() {
 }
 
 /* -----------------------------------
-   STATUS & HEADER
------------------------------------ */
-export function showStatus(msg, cls = "text-gray-700") {
-  initializeElements();
-  if (!els.status) return;
-  els.status.innerHTML = msg;
-  els.status.className = `p-3 text-center font-semibold ${cls}`;
-  els.status.classList.remove("hidden");
-}
-
-export function hideStatus() {
-  initializeElements();
-  if (els.status) els.status.classList.add("hidden");
-}
-
-export function updateHeader(topicDisplayTitle, diff) {
-  initializeElements();
-  if (els.title) els.title.textContent = topicDisplayTitle;
-  if (els.chapterNameDisplay) {
-    els.chapterNameDisplay.textContent = topicDisplayTitle;
-    els.chapterNameDisplay.classList.remove("hidden");
-  }
-  if (els.diffBadge) {
-    els.diffBadge.textContent = `Difficulty: ${diff || "--"}`;
-    els.diffBadge.classList.remove("hidden");
-  }
-}
-
-/* -----------------------------------
    STUDENT-FRIENDLY LOADING ANIMATION
 ----------------------------------- */
 export function showAuthLoading(message = "Preparing your challenge...") {
@@ -119,8 +90,7 @@ export function showAuthLoading(message = "Preparing your challenge...") {
       </style>`;
     document.body.appendChild(overlay);
   } else {
-    const msgEl = overlay.querySelector('p');
-    if (msgEl) msgEl.textContent = message;
+    overlay.querySelector('p').textContent = message;
     overlay.classList.remove("hidden");
   }
 }
@@ -128,16 +98,6 @@ export function showAuthLoading(message = "Preparing your challenge...") {
 export function hideAuthLoading() {
   const overlay = document.getElementById("auth-loading-overlay");
   if (overlay) overlay.classList.add("hidden");
-}
-
-/* -----------------------------------
-   VIEW CONTROL
------------------------------------ */
-export function showView(viewName) {
-  initializeElements();
-  const views = { "quiz-content": els.quizContent, "results-screen": els.reviewScreen, "paywall-screen": els.paywallScreen };
-  Object.values(views).forEach(v => v?.classList.add("hidden"));
-  views[viewName]?.classList.remove("hidden");
 }
 
 /* -----------------------------------
@@ -181,7 +141,7 @@ export function renderQuestion(q, idxOneBased, selected, submitted) {
   const type = mapped.question_type;
   const optKeys = ["A", "B", "C", "D"];
 
-  /* ================== ASSERTION–REASON (FIXED DUPLICATION) ================== */
+  /* ================== ASSERTION–REASON (FIXED) ================== */
   if (type === "ar" || mapped.text.toLowerCase().includes("assertion")) {
     const assertion = normalizeReasonText(cleanKatexMarkers(mapped.text));
     const reason = normalizeReasonText(cleanKatexMarkers(mapped.scenario_reason || mapped.explanation));
@@ -192,15 +152,17 @@ export function renderQuestion(q, idxOneBased, selected, submitted) {
       D: "A is false but R is true."
     };
     const html = optKeys.map(opt => generateOptionHtml(mapped, opt, selected, submitted, arOptions[opt])).join("");
+    
     els.list.innerHTML = `
       <div class="space-y-6 animate-fadeIn">
         <div>
-          <span class="block text-blue-800 font-bold uppercase text-xs tracking-widest mb-1">Assertion (A)</span>
-          <div class="text-lg text-gray-900 font-semibold leading-relaxed">Q${idxOneBased}: ${assertion}</div>
-        </div>
-        <div>
-          <span class="block text-blue-800 font-bold uppercase text-xs tracking-widest mb-1">Reason (R)</span>
-          <div class="text-md text-gray-800 leading-relaxed italic">${reason}</div>
+          <div class="text-lg text-gray-900 font-bold leading-relaxed mb-4">
+            Q${idxOneBased}: Assertion (A): ${assertion}
+          </div>
+          <div class="text-md text-gray-800 font-medium leading-relaxed bg-gray-50 p-3 rounded border-l-4 border-blue-500">
+            <span class="text-blue-800 font-bold uppercase text-xs block mb-1">Reason (R)</span>
+            ${reason}
+          </div>
         </div>
         <div class="mt-6 border-t pt-4">
           <p class="font-bold text-gray-700 text-sm mb-3 uppercase tracking-wide">Mark the correct choice:</p>
@@ -211,14 +173,19 @@ export function renderQuestion(q, idxOneBased, selected, submitted) {
   }
 
   /* ================== CASE BASED (USE HINT) ================== */
-  if (type === "case") {
+  if (type === "case" || type === "case based") {
     const scenario = normalizeReasonText(cleanKatexMarkers(mapped.scenario_reason));
     const question = cleanKatexMarkers(mapped.text);
     const optionsHtml = optKeys.map(opt => generateOptionHtml(mapped, opt, selected, submitted)).join("");
     const reason = normalizeReasonText(cleanKatexMarkers(mapped.explanation));
+    
     const hintHtml = (reason || !submitted) && reason 
-      ? `<div class="mt-3 p-3 bg-blue-50 border border-blue-100 rounded text-gray-700 italic text-sm"><b>Hint:</b> ${reason}</div>` 
+      ? `<div class="mt-4 p-3 bg-blue-50 border border-blue-100 rounded text-gray-700 text-sm">
+           <span class="font-bold text-blue-700 uppercase text-xs block mb-1">💡 Hint</span>
+           ${reason}
+         </div>` 
       : "";
+
     els.list.innerHTML = `
       <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-start animate-fadeIn">
         <div class="p-5 bg-gray-50 rounded-xl border border-gray-200 max-h-96 overflow-y-auto shadow-inner">
@@ -238,10 +205,11 @@ export function renderQuestion(q, idxOneBased, selected, submitted) {
   const qText = cleanKatexMarkers(mapped.text);
   const reason = normalizeReasonText(cleanKatexMarkers(mapped.explanation || mapped.scenario_reason));
   const optionsHtml = optKeys.map(opt => generateOptionHtml(mapped, opt, selected, submitted)).join("");
+
   els.list.innerHTML = `
     <div class="space-y-6 animate-fadeIn">
       <div class="text-lg font-bold text-gray-900 leading-tight">Q${idxOneBased}: ${qText}</div>
-      ${reason && !submitted ? `<p class="text-gray-500 italic text-sm">💡 Reasoning: ${reason}</p>` : ""}
+      ${reason && !submitted ? `<div class="text-gray-500 italic text-sm p-2 bg-gray-50 rounded"><b>Hint:</b> ${reason}</div>` : ""}
       <div class="space-y-3">${optionsHtml}</div>
       ${submitted && reason ? `<div class="mt-3 p-3 bg-gray-50 border rounded text-gray-700 text-sm shadow-sm"><b>Reasoning:</b> ${reason}</div>` : ""}
     </div>`;
@@ -271,7 +239,7 @@ export function updateNavigation(index, total, submitted) {
 }
 
 /* -----------------------------------
-   RESULTS & FEEDBACK (CRITICAL EXPORTS)
+   RESULTS & FEEDBACK
 ----------------------------------- */
 export function showResults(score, total) {
   initializeElements();
@@ -340,5 +308,25 @@ export function updateAuthUI(user) {
   } else {
     welcomeEl.classList.add("hidden");
     document.getElementById("logout-nav-btn")?.classList.add("hidden");
+  }
+}
+
+export function showView(viewName) {
+  initializeElements();
+  const views = { "quiz-content": els.quizContent, "results-screen": els.reviewScreen, "paywall-screen": els.paywallScreen };
+  Object.values(views).forEach(v => v?.classList.add("hidden"));
+  views[viewName]?.classList.remove("hidden");
+}
+
+export function updateHeader(topicDisplayTitle, diff) {
+  initializeElements();
+  if (els.title) els.title.textContent = topicDisplayTitle;
+  if (els.chapterNameDisplay) {
+    els.chapterNameDisplay.textContent = topicDisplayTitle;
+    els.chapterNameDisplay.classList.remove("hidden");
+  }
+  if (els.diffBadge) {
+    els.diffBadge.textContent = `Difficulty: ${diff || "--"}`;
+    els.diffBadge.classList.remove("hidden");
   }
 }
