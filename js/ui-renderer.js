@@ -57,17 +57,60 @@ export function initializeElements() {
 }
 
 /* -----------------------------------
-   ANIMATED LOADING UI (Student Friendly)
+   STATUS & HEADER
 ----------------------------------- */
+export function showStatus(msg, cls = "text-gray-700") {
+  initializeElements();
+  if (!els.status) return;
+  els.status.innerHTML = msg;
+  els.status.className = `p-3 text-center font-semibold ${cls}`;
+  els.status.classList.remove("hidden");
+}
+
+export function hideStatus() {
+  initializeElements();
+  if (els.status) els.status.classList.add("hidden");
+}
+
+export function updateHeader(topicDisplayTitle, diff) {
+  initializeElements();
+  if (els.title) els.title.textContent = topicDisplayTitle;
+  if (els.chapterNameDisplay) {
+    els.chapterNameDisplay.textContent = topicDisplayTitle;
+    els.chapterNameDisplay.classList.remove("hidden");
+  }
+  if (els.diffBadge) {
+    els.diffBadge.textContent = `Difficulty: ${diff || "--"}`;
+    els.diffBadge.classList.remove("hidden");
+  }
+}
+
+/* -----------------------------------
+   AUTH & LOADING UI (With Animation)
+----------------------------------- */
+export function updateAuthUI(user) {
+  initializeElements();
+  if (!els.authNav) return;
+  const welcomeEl = els.welcomeUser;
+  const logoutBtn = document.getElementById("logout-nav-btn"); 
+  if (user) {
+    const name = user.displayName?.split(" ")[0] || user.email?.split("@")[0] || "Student";
+    welcomeEl.textContent = `Welcome, ${name}!`;
+    welcomeEl.classList.remove("hidden");
+    if (logoutBtn) logoutBtn.classList.remove("hidden");
+  } else {
+    welcomeEl.classList.add("hidden");
+    if (logoutBtn) logoutBtn.classList.add("hidden");
+  }
+}
+
 export function showAuthLoading(message = "Preparing your challenge...") {
   initializeElements();
   let overlay = document.getElementById("auth-loading-overlay");
   if (!overlay) {
     overlay = document.createElement("div");
     overlay.id = "auth-loading-overlay";
-    overlay.className = "fixed inset-0 bg-white flex flex-col items-center justify-center z-50";
-    
-    // Fun student-themed animation (Pulsing Brain/Book icon)
+    overlay.className = "fixed inset-0 bg-white flex flex-col items-center justify-center z-50 animate-fadeIn";
     overlay.innerHTML = `
       <div class="flex flex-col items-center max-w-sm px-6 text-center">
         <div class="relative mb-8">
@@ -81,25 +124,14 @@ export function showAuthLoading(message = "Preparing your challenge...") {
         <h2 class="text-2xl font-bold text-gray-800 mb-2">Think Like a Pro!</h2>
         <p class="text-blue-600 font-medium animate-pulse mb-6">${message}</p>
         <div class="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
-           <div class="bg-blue-600 h-full animate-progress" style="width: 50%;"></div>
+           <div class="bg-blue-600 h-full animate-progress-bar"></div>
         </div>
       </div>
       <style>
-        @keyframes progress {
-          0% { width: 0%; }
-          50% { width: 70%; }
-          100% { width: 100%; }
-        }
-        .animate-progress {
-          animation: progress 2s infinite ease-in-out;
-        }
-        .animate-fadeIn {
-          animation: fadeIn 0.4s ease-out forwards;
-        }
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(10px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
+        @keyframes progress-anim { 0% { width: 0%; } 50% { width: 70%; } 100% { width: 100%; } }
+        .animate-progress-bar { animation: progress-anim 2s infinite ease-in-out; }
+        .animate-fadeIn { animation: fadeIn 0.3s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
       </style>
     `;
     document.body.appendChild(overlay);
@@ -116,21 +148,8 @@ export function hideAuthLoading() {
 }
 
 /* -----------------------------------
-   HEADER & VIEW CONTROL
+   VIEW CONTROL
 ----------------------------------- */
-export function updateHeader(topicDisplayTitle, diff) {
-  initializeElements();
-  if (els.title) els.title.textContent = topicDisplayTitle;
-  if (els.chapterNameDisplay) {
-    els.chapterNameDisplay.textContent = topicDisplayTitle;
-    els.chapterNameDisplay.classList.remove("hidden");
-  }
-  if (els.diffBadge) {
-    els.diffBadge.textContent = `Difficulty: ${diff || "--"}`;
-    els.diffBadge.classList.remove("hidden");
-  }
-}
-
 export function showView(viewName) {
   initializeElements();
   const views = {
@@ -151,7 +170,6 @@ function generateOptionHtml(q, opt, selected, submitted, optionText) {
     const isCorrect = submitted && q.correct_answer?.toUpperCase() === opt;
     const isWrong = submitted && isSel && !isCorrect;
     const cls = `${OPTION_BASE_CLS} ${isCorrect ? CORRECT_CLS : isWrong ? WRONG_CLS : isSel ? SELECTED_CLS : ""}`;
-
     return `
         <label class="block">
             <input type="radio" name="q-${q.id}" value="${opt}" class="hidden" ${isSel ? "checked" : ""} ${submitted ? "disabled" : ""}>
@@ -205,7 +223,8 @@ export function renderQuestion(q, idxOneBased, selected, submitted) {
     const scenario = normalizeReasonText(cleanKatexMarkers(mapped.scenario_reason));
     const question = cleanKatexMarkers(mapped.text);
     const optionsHtml = optKeys.map(opt => generateOptionHtml(mapped, opt, selected, submitted)).join("");
-    const explanationHtml = submitted && mapped.explanation ? `<div class="mt-3 p-3 bg-blue-50 border border-blue-100 rounded text-gray-700 italic"><b>Explanation:</b> ${normalizeReasonText(cleanKatexMarkers(mapped.explanation))}</div>` : "";
+    const reason = normalizeReasonText(cleanKatexMarkers(mapped.explanation));
+    const explanationHtml = submitted && reason ? `<div class="mt-3 p-3 bg-blue-50 border border-blue-100 rounded text-gray-700 italic"><b>Explanation:</b> ${reason}</div>` : "";
     els.list.innerHTML = `
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-start animate-fadeIn">
         <div class="p-4 bg-gray-50 rounded-lg border border-gray-200 max-h-80 overflow-y-auto">
@@ -233,8 +252,22 @@ export function renderQuestion(q, idxOneBased, selected, submitted) {
 }
 
 /* -----------------------------------
-   NAV & REVIEW (Optimized)
+   INTERACTION HANDLERS
 ----------------------------------- */
+export function attachAnswerListeners(handler) {
+  initializeElements();
+  if (!els.list) return;
+  if (els._listener) els.list.removeEventListener("change", els._listener);
+  const listener = (e) => {
+    const target = e.target;
+    if (target?.type === "radio" && target.name.startsWith("q-")) {
+      handler(target.name.substring(2), target.value);
+    }
+  };
+  els.list.addEventListener("change", listener);
+  els._listener = listener;
+}
+
 export function updateNavigation(index, total, submitted) {
   initializeElements();
   const show = (btn, cond) => btn && btn.classList.toggle("hidden", !cond);
@@ -244,6 +277,15 @@ export function updateNavigation(index, total, submitted) {
   if (els.counter) els.counter.textContent = `${index + 1} / ${total}`;
 }
 
+/* -----------------------------------
+   RESULTS & FEEDBACK
+----------------------------------- */
+export function showResults(score, total) {
+  initializeElements();
+  if (els.score) els.score.textContent = `${score} / ${total}`;
+  showView("results-screen");
+}
+
 export function renderAllQuestionsForReview(questions, userAnswers = {}) {
   initializeElements();
   if (!els.reviewContainer) return;
@@ -251,7 +293,7 @@ export function renderAllQuestionsForReview(questions, userAnswers = {}) {
     const txt = cleanKatexMarkers(q.text || "");
     const correct = (userAnswers[q.id] || "").toUpperCase() === (q.correct_answer || "").toUpperCase();
     return `
-      <div class="mb-5 p-4 bg-white rounded-lg border border-gray-100 shadow-sm">
+      <div class="mb-5 p-4 bg-white rounded-lg border border-gray-100 shadow-sm animate-fadeIn">
         <p class="font-bold text-base mb-2">Q${i + 1}: ${txt}</p>
         <p class="text-sm">Your Answer: <span class="${correct ? 'text-green-600' : 'text-red-600'} font-bold">${userAnswers[q.id] || "No Attempt"}</span></p>
         <p class="text-sm">Correct Answer: <span class="text-green-700 font-bold">${q.correct_answer}</span></p>
@@ -260,10 +302,39 @@ export function renderAllQuestionsForReview(questions, userAnswers = {}) {
   els.reviewContainer.innerHTML = html;
 }
 
-export function showResults(score, total) {
-  initializeElements();
-  if (els.score) els.score.textContent = `${score} / ${total}`;
-  showView("results-screen");
+export function getResultFeedback({ score, total, difficulty }) {
+  const norm = (difficulty || "").toLowerCase();
+  const diff = norm.includes("advanced") ? "Advanced" : norm.includes("medium") ? "Medium" : "Simple";
+  const pct = total > 0 ? Math.round((score / total) * 100) : 0;
+  const config = {
+    Simple: { high: ["Excellent!", "Mastered basics. Try Medium."], mid: ["Good!", "Keep practicing for accuracy."], low: ["Keep going!", "Focus on concepts."] },
+    Medium: { high: ["Great!", "Handle Medium well. Try Advanced."], mid: ["Nice effort!", "Review and aim higher."], low: ["Don't give up!", "Revisit basics."] },
+    Advanced: { high: ["Outstanding!", "Exceptional understanding."], mid: ["Strong attempt!", "Close to mastery."], low: ["Tough level!", "Needs precision."] }
+  };
+  const level = pct >= 90 ? "high" : pct >= 60 ? "mid" : "low";
+  const [title, message] = config[diff][level];
+  return { title, message, curiosity: pct >= 90 ? "Mastery unlocked." : "Precision unlocks the next level.", showRequestMoreBtn: diff === "Advanced" && pct >= 90, context: { difficulty: diff, percentage: pct } };
 }
 
-// ... include updateAuthUI, getResultFeedback, and showResultFeedback as per previous versions
+export function showResultFeedback(feedback, requestMoreHandler) {
+  initializeElements();
+  if (!els.reviewScreen) return;
+  let container = document.getElementById("result-feedback-container");
+  if (container) container.remove();
+  container = document.createElement("div");
+  container.id = "result-feedback-container";
+  container.className = "w-full max-w-3xl mx-auto mt-6 p-5 rounded-lg border border-indigo-100 bg-indigo-50 text-center";
+  container.innerHTML = `
+    <h3 class="text-xl font-bold text-indigo-800 mb-2">${feedback.title}</h3>
+    <p class="text-gray-700 mb-2">${feedback.message}</p>
+    <p class="text-xs text-indigo-600 font-semibold italic mb-4">${feedback.curiosity}</p>
+  `;
+  if (feedback.showRequestMoreBtn) {
+    const btn = document.createElement("button");
+    btn.className = "bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-full transition shadow-md";
+    btn.textContent = "Request Challenging Questions";
+    btn.onclick = () => requestMoreHandler(feedback.context);
+    container.appendChild(btn);
+  }
+  els.reviewScreen.insertBefore(container, els.reviewScreen.querySelector(".flex") || null);
+}
