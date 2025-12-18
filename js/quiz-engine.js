@@ -1,5 +1,5 @@
 // -----------------------------------------------------------------------------
-// UNIVERSAL QUIZ ENGINE (Class 5–12) - UPDATED FOR CATEGORY ANALYSIS
+// UNIVERSAL QUIZ ENGINE (Class 5–12) - SCHEMA ALIGNED
 // -----------------------------------------------------------------------------
 
 import { initializeServices, getAuthUser } from "./config.js";
@@ -87,7 +87,7 @@ function parseUrlParameters() {
 }
 
 // ===========================================================
-// OPTIMIZED LOADING
+// DATA MAPPING (FIXED FOR SUPABASE SCHEMA)
 // ===========================================================
 async function loadQuiz() {
   try {
@@ -97,17 +97,21 @@ async function loadQuiz() {
 
     quizState.questions = rawQuestions.map(q => ({
       id: q.id,
-      question_type: (q.question_type || q.type || "").toLowerCase(),
-      text: q.text || q.question_text || q.prompt || "",
-      scenario_reason: q.scenario_reason || q.scenario_reason_text || q.context || "",
-      explanation: q.explanation || q.explanation_text || q.reason || "",
-      correct_answer: (q.correct_answer || q.correct_answer_key || q.answer || "").toUpperCase(),
+      // Logic: Use question_type field for layout switching
+      question_type: (q.question_type || "").toLowerCase(),
+      // Logic: Map question_text to text
+      text: q.question_text || "", 
+      // Logic: Map scenario_reason_text to scenario_reason
+      scenario_reason: q.scenario_reason_text || "", 
+      // Logic: Map correct_answer_key to correct_answer
+      correct_answer: (q.correct_answer_key || "").toUpperCase(), 
       options: {
-        A: q.options?.A || q.option_a || "",
-        B: q.options?.B || q.option_b || "",
-        C: q.options?.C || q.option_c || "",
-        D: q.options?.D || q.option_d || ""
-      }
+        A: q.option_a || "",
+        B: q.option_b || "",
+        C: q.option_c || "",
+        D: q.option_d || ""
+      },
+      explanation: q.explanation || ""
     }));
 
     quizState.userAnswers = Object.fromEntries(quizState.questions.map(x => [x.id, null]));
@@ -150,7 +154,7 @@ async function handleSubmit() {
   if (quizState.isSubmitted) return;
   quizState.isSubmitted = true;
 
-  // Initialize detailed stats object
+  // Initialize stats for Cognitive Feedback
   const stats = {
     total: quizState.questions.length,
     correct: 0,
@@ -161,11 +165,11 @@ async function handleSubmit() {
 
   quizState.questions.forEach(q => {
     const isCorrect = quizState.userAnswers[q.id]?.toUpperCase() === q.correct_answer;
-    const type = (q.question_type || "").toLowerCase();
+    const type = q.question_type.toLowerCase();
     
     if (isCorrect) stats.correct++;
 
-    // Categorize question for analysis
+    // Categorize based on type for the analysis table
     let category = 'mcq';
     if (type.includes('ar') || type.includes('assertion')) category = 'ar';
     else if (type.includes('case')) category = 'case';
@@ -177,32 +181,20 @@ async function handleSubmit() {
 
   quizState.score = stats.correct;
 
-  // Save detailed analysis to Firebase
+  // Save detailed result to Firestore
   const user = getAuthUser();
   if (user) {
     saveResult({
-      classId: quizState.classId, 
-      subject: quizState.subject,
-      topic: quizState.topicSlug, 
-      difficulty: quizState.difficulty,
-      score: stats.correct, 
-      total: stats.total,
-      breakdown: { // Save category stats to Firestore
-          mcq: stats.mcq,
-          ar: stats.ar,
-          case: stats.case
-      },
+      classId: quizState.classId, subject: quizState.subject,
+      topic: quizState.topicSlug, difficulty: quizState.difficulty,
+      score: stats.correct, total: stats.total,
+      breakdown: { mcq: stats.mcq, ar: stats.ar, case: stats.case },
       user_answers: quizState.userAnswers
     }).catch(console.warn);
   }
 
-  // Trigger professional results rendering with stats
-  if (typeof UI.renderResults === "function") {
-      UI.renderResults(stats, quizState.difficulty);
-  } else {
-      // Fallback for older renderer versions
-      UI.showResults(quizState.score, quizState.questions.length);
-  }
+  // Render the professional result UI
+  UI.renderResults(stats, quizState.difficulty);
 }
 
 // ===========================================================
@@ -224,11 +216,9 @@ function attachDomEvents() {
     if (b.id === "next-btn") return handleNavigation(1);
     if (b.id === "submit-btn") return handleSubmit();
     
-    // Auth events
     if (["login-btn","google-signin-btn","paywall-login-btn"].includes(b.id)) return signInWithGoogle();
     if (b.id === "logout-nav-btn") return signOut();
     
-    // Results Page Events
     if (b.id === "btn-review-errors") {
         UI.renderAllQuestionsForReview?.(quizState.questions, quizState.userAnswers);
         document.getElementById('review-container')?.classList.toggle('hidden');
