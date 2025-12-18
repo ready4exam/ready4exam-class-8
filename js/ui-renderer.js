@@ -4,20 +4,22 @@ import { cleanKatexMarkers } from './utils.js';
 let els = {};
 let isInit = false;
 
-// UI Styling Constants
-const OPTION_BASE_CLS = "option-label flex items-start p-3 border-2 rounded-lg cursor-pointer transition";
+/* -----------------------------------
+   UI STYLING CONSTANTS
+----------------------------------- */
+const OPTION_BASE_CLS =
+  "option-label flex items-start p-3 border-2 rounded-lg cursor-pointer transition";
 const CORRECT_CLS = " border-green-600 bg-green-50";
 const WRONG_CLS = " border-red-600 bg-red-50";
 const SELECTED_CLS = " border-blue-500 bg-blue-50";
 
-/**
- * CLEANER: Aggressively strips hardcoded labels from raw strings.
- * Prevents "Assertion (A): Assertion (A):" and removes redundant "Suggestion text".
- */
+/* -----------------------------------
+   TEXT NORMALIZER
+----------------------------------- */
 function normalizeReasonText(txt) {
   if (!txt) return "";
-  const pattern = /^\s*(Reasoning|Reason|Context|Assertion|Assertion \(A\)|Reason \(R\)|Scenario|Suggestion text|Consider the impact of|Consider the)\s*(\(R\)|\(A\))?\s*[:\-]\s*/gi;
-  // Double-pass ensures even nested labels are removed
+  const pattern =
+    /^\s*(Reasoning|Reason|Context|Assertion|Assertion \(A\)|Reason \(R\)|Scenario|Suggestion text|Consider the impact of|Consider the)\s*(\(R\)|\(A\))?\s*[:\-]\s*/gi;
   return txt.replace(pattern, "").replace(pattern, "").trim();
 }
 
@@ -26,6 +28,7 @@ function normalizeReasonText(txt) {
 ----------------------------------- */
 export function initializeElements() {
   if (isInit) return;
+
   els = {
     title: document.getElementById("quiz-page-title"),
     diffBadge: document.getElementById("difficulty-display"),
@@ -46,51 +49,62 @@ export function initializeElements() {
     miniTitle: document.getElementById("quiz-title"),
     chapterNameDisplay: document.getElementById("chapter-name-display"),
   };
+
   if (!els.reviewContainer && els.reviewScreen) {
     const rc = document.createElement("div");
     rc.id = "review-container";
     rc.className = "w-full max-w-3xl text-left mb-8";
-    els.reviewScreen.insertBefore(rc, els.reviewScreen.querySelector(".flex") || null);
+    els.reviewScreen.insertBefore(
+      rc,
+      els.reviewScreen.querySelector(".flex") || null
+    );
     els.reviewContainer = rc;
   }
+
   isInit = true;
 }
 
 /* -----------------------------------
-   STUDENT-FRIENDLY LOADING ANIMATION
+   LOADING OVERLAY
 ----------------------------------- */
 export function showAuthLoading(message = "Preparing your challenge...") {
   initializeElements();
   let overlay = document.getElementById("auth-loading-overlay");
+
   if (!overlay) {
     overlay = document.createElement("div");
     overlay.id = "auth-loading-overlay";
-    overlay.className = "fixed inset-0 bg-white flex flex-col items-center justify-center z-50 animate-fadeIn";
+    overlay.className =
+      "fixed inset-0 bg-white flex flex-col items-center justify-center z-50 animate-fadeIn";
+
     overlay.innerHTML = `
       <div class="flex flex-col items-center max-w-sm px-6 text-center">
         <div class="relative mb-8">
           <div class="absolute inset-0 rounded-full bg-blue-100 animate-ping opacity-75"></div>
           <div class="relative bg-blue-600 p-6 rounded-full shadow-xl">
-             <svg class="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
-             </svg>
+            <svg class="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253">
+              </path>
+            </svg>
           </div>
         </div>
-        <h2 class="text-2xl font-bold text-gray-800 mb-2">Think Like a Pro!</h2>
-        <p class="text-blue-600 font-medium animate-pulse mb-6">${message}</p>
+
+        <h2 class="text-2xl font-bold text-gray-800 mb-2">
+          Think Like a Pro!
+        </h2>
+        <p class="text-blue-600 font-medium animate-pulse mb-6">
+          ${message}
+        </p>
+
         <div class="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
-           <div class="bg-blue-600 h-full animate-progress-bar"></div>
+          <div class="bg-blue-600 h-full animate-progress-bar"></div>
         </div>
       </div>
-      <style>
-        @keyframes progress-anim { 0% { width: 0%; } 50% { width: 70%; } 100% { width: 100%; } }
-        .animate-progress-bar { animation: progress-anim 2s infinite ease-in-out; }
-        .animate-fadeIn { animation: fadeIn 0.3s ease-out forwards; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-      </style>`;
+    `;
     document.body.appendChild(overlay);
   } else {
-    overlay.querySelector('p').textContent = message;
+    overlay.querySelector("p").textContent = message;
     overlay.classList.remove("hidden");
   }
 }
@@ -100,22 +114,48 @@ export function hideAuthLoading() {
   if (overlay) overlay.classList.add("hidden");
 }
 
+/* -----------------------------------
+   OPTION RENDERER
+----------------------------------- */
 function generateOptionHtml(q, opt, selected, submitted, optionText) {
-  const txt = optionText ? optionText : cleanKatexMarkers(q.options[opt] || "");
+  const txt = optionText
+    ? optionText
+    : cleanKatexMarkers(q.options[opt] || "");
+
   const isSel = selected === opt;
-  const isCorrect = submitted && q.correct_answer?.toUpperCase() === opt;
+  const isCorrect =
+    submitted && q.correct_answer?.toUpperCase() === opt;
   const isWrong = submitted && isSel && !isCorrect;
-  const cls = `${OPTION_BASE_CLS} ${isCorrect ? CORRECT_CLS : isWrong ? WRONG_CLS : isSel ? SELECTED_CLS : ""}`;
+
+  const cls = `${OPTION_BASE_CLS}${
+    isCorrect
+      ? CORRECT_CLS
+      : isWrong
+      ? WRONG_CLS
+      : isSel
+      ? SELECTED_CLS
+      : ""
+  }`;
+
   return `
     <label class="block">
-      <input type="radio" name="q-${q.id}" value="${opt}" class="hidden" ${isSel ? "checked" : ""} ${submitted ? "disabled" : ""}>
+      <input type="radio"
+             name="q-${q.id}"
+             value="${opt}"
+             class="hidden"
+             ${isSel ? "checked" : ""}
+             ${submitted ? "disabled" : ""}>
       <div class="${cls}">
-        <span class="font-bold mr-3">${optionText ? opt+')' : opt+'.'}</span>
+        <span class="font-bold mr-3">${opt}.</span>
         <span class="text-gray-800">${txt}</span>
       </div>
-    </label>`;
+    </label>
+  `;
 }
 
+/* -----------------------------------
+   QUESTION RENDERER
+----------------------------------- */
 export function renderQuestion(q, idxOneBased, selected, submitted) {
   initializeElements();
   if (!els.list) return;
@@ -124,120 +164,196 @@ export function renderQuestion(q, idxOneBased, selected, submitted) {
     id: q.id,
     question_type: (q.question_type || q.type || "").toLowerCase(),
     text: q.text || q.question_text || q.prompt || "",
-    scenario_reason: q.scenario_reason || q.scenario_reason_text || q.context || q.passage || "",
-    explanation: q.explanation || q.explanation_text || q.reason || "",
-    correct_answer: (q.correct_answer || q.correct_answer_key || q.answer || "").toUpperCase(),
+    scenario_reason:
+      q.scenario_reason || q.context || q.passage || "",
+    explanation: q.explanation || q.reason || "",
+    correct_answer: (q.correct_answer || q.answer || "").toUpperCase(),
     options: {
-      A: q.options?.A || q.options?.a || q.option_a || "",
-      B: q.options?.B || q.options?.b || q.option_b || "",
-      C: q.options?.C || q.options?.c || q.option_c || "",
-      D: q.options?.D || q.options?.d || q.option_d || ""
-    }
+      A: q.options?.A || q.option_a || "",
+      B: q.options?.B || q.option_b || "",
+      C: q.options?.C || q.option_c || "",
+      D: q.options?.D || q.option_d || "",
+    },
   };
 
   const type = mapped.question_type;
   const optKeys = ["A", "B", "C", "D"];
 
-  /* ================== ASSERTION–REASON (FIXED) ================== */
+  /* ================= ASSERTION–REASON ================= */
   if (type === "ar" || mapped.text.toLowerCase().includes("assertion")) {
-    const assertion = normalizeReasonText(cleanKatexMarkers(mapped.text));
-    const reason = normalizeReasonText(cleanKatexMarkers(mapped.scenario_reason || mapped.explanation));
+    const assertion = normalizeReasonText(
+      cleanKatexMarkers(mapped.text)
+    );
+    const reason = normalizeReasonText(
+      cleanKatexMarkers(mapped.scenario_reason || mapped.explanation)
+    );
+
     const arOptions = {
       A: "Both A and R are true and R is the correct explanation of A.",
       B: "Both A and R are true but R is not the correct explanation of A.",
       C: "A is true but R is false.",
-      D: "A is false but R is true."
+      D: "A is false but R is true.",
     };
-    const html = optKeys.map(opt => generateOptionHtml(mapped, opt, selected, submitted, arOptions[opt])).join("");
-    
+
+    const html = optKeys
+      .map((opt) =>
+        generateOptionHtml(mapped, opt, selected, submitted, arOptions[opt])
+      )
+      .join("");
+
     els.list.innerHTML = `
       <div class="space-y-6 animate-fadeIn">
-        <div>
-          <div class="text-lg text-gray-900 font-bold leading-relaxed mb-4">
-            Q${idxOneBased}: Assertion (A): ${assertion}
+        <div class="p-4 bg-white rounded-lg border border-gray-200">
+          <div class="text-lg font-bold text-gray-900 mb-3">
+            Q${idxOneBased}.
           </div>
-          <div class="text-md text-gray-800 font-medium leading-relaxed bg-gray-50 p-3 rounded border-l-4 border-blue-500">
-            <span class="text-blue-800 font-bold uppercase text-xs block mb-1">Reason (R)</span>
+
+          <div class="mb-3">
+            <span class="font-bold">Assertion (A):</span>
+            ${assertion}
+          </div>
+
+          <div class="bg-gray-50 p-3 rounded border-l-4 border-blue-500">
+            <span class="text-blue-800 font-bold uppercase text-xs block mb-1">
+              Reason (R)
+            </span>
             ${reason}
           </div>
         </div>
-        <div class="mt-6 border-t pt-4">
-          <p class="font-bold text-gray-700 text-sm mb-3 uppercase tracking-wide">Mark the correct choice:</p>
+
+        <div>
+          <p class="font-bold text-gray-700 text-sm mb-3 uppercase">
+            Mark the correct choice:
+          </p>
           <div class="space-y-3">${html}</div>
         </div>
-      </div>`;
+      </div>
+    `;
     return;
   }
 
-  /* ================== CASE BASED (USE HINT) ================== */
+  /* ================= CASE BASED ================= */
   if (type === "case" || type === "case based") {
-    const scenario = normalizeReasonText(cleanKatexMarkers(mapped.scenario_reason));
+    const scenario = normalizeReasonText(
+      cleanKatexMarkers(mapped.scenario_reason)
+    );
     const question = cleanKatexMarkers(mapped.text);
-    const optionsHtml = optKeys.map(opt => generateOptionHtml(mapped, opt, selected, submitted)).join("");
-    const reason = normalizeReasonText(cleanKatexMarkers(mapped.explanation));
-    
-    // RENDER: Use "Hint" instead of "Reasoning"
-    const hintHtml = (reason || !submitted) && reason 
-      ? `<div class="mt-4 p-3 bg-blue-50 border border-blue-100 rounded text-gray-700 text-sm">
-           <span class="font-bold text-blue-700 uppercase text-xs block mb-1">💡 Hint</span>
-           ${reason}
-         </div>` 
-      : "";
+    const hint = normalizeReasonText(
+      cleanKatexMarkers(mapped.explanation)
+    );
+
+    const optionsHtml = optKeys
+      .map((opt) =>
+        generateOptionHtml(mapped, opt, selected, submitted)
+      )
+      .join("");
+
+    const hintHtml =
+      hint && !submitted
+        ? `
+        <div class="mt-4 p-3 bg-blue-50 border border-blue-100 rounded text-gray-700 text-sm">
+          <span class="font-bold text-blue-700 uppercase text-xs block mb-1">
+            Hint
+          </span>
+          ${hint}
+        </div>`
+        : "";
 
     els.list.innerHTML = `
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-start animate-fadeIn">
-        <div class="p-5 bg-gray-50 rounded-xl border border-gray-200 max-h-96 overflow-y-auto shadow-inner">
-          <h3 class="font-bold mb-3 text-indigo-700 uppercase text-xs tracking-widest border-b pb-2">Context</h3>
-          <p class="text-gray-800 whitespace-pre-line text-sm leading-relaxed">${scenario}</p>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-8 animate-fadeIn">
+        <div class="p-5 bg-gray-50 rounded-xl border border-gray-200 max-h-96 overflow-y-auto">
+          <h3 class="font-bold mb-3 text-indigo-700 uppercase text-xs border-b pb-2">
+            Context
+          </h3>
+          <p class="text-gray-800 text-sm leading-relaxed">
+            ${scenario}
+          </p>
         </div>
+
         <div class="space-y-6">
-          <div class="text-lg font-bold text-gray-900 leading-tight">Q${idxOneBased}: ${question}</div>
+          <div class="text-lg font-bold">
+            Q${idxOneBased}: ${question}
+          </div>
           <div class="space-y-3">${optionsHtml}</div>
           ${hintHtml}
         </div>
-      </div>`;
+      </div>
+    `;
     return;
   }
 
-  /* ================== NORMAL MCQ ================== */
+  /* ================= NORMAL MCQ ================= */
   const qText = cleanKatexMarkers(mapped.text);
-  const reason = normalizeReasonText(cleanKatexMarkers(mapped.explanation || mapped.scenario_reason));
-  const optionsHtml = optKeys.map(opt => generateOptionHtml(mapped, opt, selected, submitted)).join("");
+  const reason = normalizeReasonText(
+    cleanKatexMarkers(mapped.explanation)
+  );
+
+  const optionsHtml = optKeys
+    .map((opt) =>
+      generateOptionHtml(mapped, opt, selected, submitted)
+    )
+    .join("");
 
   els.list.innerHTML = `
     <div class="space-y-6 animate-fadeIn">
-      <div class="text-lg font-bold text-gray-900 leading-tight">Q${idxOneBased}: ${qText}</div>
-      ${reason && !submitted ? `<div class="text-gray-500 italic text-sm p-2 bg-gray-50 rounded"><b>Hint:</b> ${reason}</div>` : ""}
+      <div class="text-lg font-bold">
+        Q${idxOneBased}: ${qText}
+      </div>
+
+      ${reason && !submitted
+        ? `<div class="text-sm italic bg-gray-50 p-2 rounded">
+             <b>Hint:</b> ${reason}
+           </div>`
+        : ""}
+
       <div class="space-y-3">${optionsHtml}</div>
-      ${submitted && reason ? `<div class="mt-3 p-3 bg-gray-50 border rounded text-gray-700 text-sm shadow-sm"><b>Reasoning:</b> ${reason}</div>` : ""}
-    </div>`;
+
+      ${submitted && reason
+        ? `<div class="mt-3 p-3 bg-gray-50 border rounded text-sm">
+             <b>Reasoning:</b> ${reason}
+           </div>`
+        : ""}
+    </div>
+  `;
 }
 
 /* -----------------------------------
-   INTERACTION HANDLERS
+   ANSWER HANDLING
 ----------------------------------- */
 export function attachAnswerListeners(handler) {
   initializeElements();
   if (!els.list) return;
-  if (els._listener) els.list.removeEventListener("change", els._listener);
+
+  if (els._listener)
+    els.list.removeEventListener("change", els._listener);
+
   els._listener = (e) => {
-    const target = e.target;
-    if (target?.type === "radio" && target.name.startsWith("q-")) handler(target.name.substring(2), target.value);
+    if (e.target?.type === "radio") {
+      handler(e.target.name.substring(2), e.target.value);
+    }
   };
+
   els.list.addEventListener("change", els._listener);
 }
 
+/* -----------------------------------
+   NAVIGATION
+----------------------------------- */
 export function updateNavigation(index, total, submitted) {
   initializeElements();
-  const show = (btn, cond) => btn && btn.classList.toggle("hidden", !cond);
+  const show = (btn, cond) =>
+    btn && btn.classList.toggle("hidden", !cond);
+
   show(els.prevButton, index > 0);
   show(els.nextButton, index < total - 1);
   show(els.submitButton, !submitted && index === total - 1);
-  if (els.counter) els.counter.textContent = `${index + 1} / ${total}`;
+
+  if (els.counter)
+    els.counter.textContent = `${index + 1} / ${total}`;
 }
 
 /* -----------------------------------
-   RESULTS & FEEDBACK
+   RESULTS
 ----------------------------------- */
 export function showResults(score, total) {
   initializeElements();
@@ -245,86 +361,17 @@ export function showResults(score, total) {
   showView("results-screen");
 }
 
-export function renderAllQuestionsForReview(questions, userAnswers = {}) {
-  initializeElements();
-  if (!els.reviewContainer) return;
-  const html = questions.map((q, i) => {
-    const ca = (q.correct_answer || "").toUpperCase();
-    const ua = (userAnswers[q.id] || "").toUpperCase();
-    const correct = ua === ca;
-    return `
-      <div class="mb-5 p-4 bg-white rounded-lg border border-gray-100 shadow-sm animate-fadeIn">
-        <p class="font-bold text-base mb-2">Q${i + 1}: ${cleanKatexMarkers(q.text)}</p>
-        <p class="text-sm">Your Answer: <span class="${correct ? 'text-green-600' : 'text-red-600'} font-bold">${ua || "No Attempt"}</span></p>
-        <p class="text-sm">Correct Answer: <span class="text-green-700 font-bold">${ca}</span></p>
-      </div>`;
-  }).join("");
-  els.reviewContainer.innerHTML = html;
-}
-
-export function getResultFeedback({ score, total, difficulty }) {
-  const norm = (difficulty || "").toLowerCase();
-  const diff = norm.includes("advanced") ? "Advanced" : norm.includes("medium") ? "Medium" : "Simple";
-  const pct = total > 0 ? Math.round((score / total) * 100) : 0;
-  const config = {
-    Simple: { high: ["Excellent!", "Mastered basics. Try Medium."], mid: ["Good!", "Keep practicing for accuracy."], low: ["Keep going!", "Focus on concepts."] },
-    Medium: { high: ["Great!", "Handle Medium well. Try Advanced."], mid: ["Nice effort!", "Review and aim higher."], low: ["Don't give up!", "Revisit basics."] },
-    Advanced: { high: ["Outstanding!", "Exceptional understanding."], mid: ["Strong attempt!", "Close to mastery."], low: ["Tough level!", "Needs precision."] }
-  };
-  const level = pct >= 90 ? "high" : pct >= 60 ? "mid" : "low";
-  const [title, message] = config[diff][level];
-  return { title, message, curiosity: pct >= 90 ? "Mastery unlocked." : "Precision unlocks the next level.", showRequestMoreBtn: diff === "Advanced" && pct >= 90, context: { difficulty: diff, percentage: pct } };
-}
-
-export function showResultFeedback(feedback, requestMoreHandler) {
-  initializeElements();
-  if (!els.reviewScreen) return;
-  let container = document.getElementById("result-feedback-container");
-  if (container) container.remove();
-  container = document.createElement("div");
-  container.id = "result-feedback-container";
-  container.className = "w-full max-w-3xl mx-auto mt-6 p-5 rounded-lg border border-indigo-100 bg-indigo-50 text-center";
-  container.innerHTML = `<h3 class="text-xl font-bold text-indigo-800 mb-2">${feedback.title}</h3><p class="text-gray-700 mb-2">${feedback.message}</p><p class="text-xs text-indigo-600 font-semibold italic mb-4">${feedback.curiosity}</p>`;
-  if (feedback.showRequestMoreBtn) {
-    const btn = document.createElement("button");
-    btn.className = "bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-full transition shadow-md";
-    btn.textContent = "Request Challenging Questions";
-    btn.onclick = () => requestMoreHandler(feedback.context);
-    container.appendChild(btn);
-  }
-  els.reviewScreen.insertBefore(container, els.reviewScreen.querySelector(".flex") || null);
-}
-
-export function updateAuthUI(user) {
-  initializeElements();
-  if (!els.authNav) return;
-  const welcomeEl = els.welcomeUser;
-  if (user) {
-    welcomeEl.textContent = `Welcome, ${user.displayName?.split(" ")[0] || "Student"}!`;
-    welcomeEl.classList.remove("hidden");
-    document.getElementById("logout-nav-btn")?.classList.remove("hidden");
-  } else {
-    welcomeEl.classList.add("hidden");
-    document.getElementById("logout-nav-btn")?.classList.add("hidden");
-  }
-}
-
+/* -----------------------------------
+   VIEW SWITCHER
+----------------------------------- */
 export function showView(viewName) {
   initializeElements();
-  const views = { "quiz-content": els.quizContent, "results-screen": els.reviewScreen, "paywall-screen": els.paywallScreen };
-  Object.values(views).forEach(v => v?.classList.add("hidden"));
-  views[viewName]?.classList.remove("hidden");
-}
+  const views = {
+    "quiz-content": els.quizContent,
+    "results-screen": els.reviewScreen,
+    "paywall-screen": els.paywallScreen,
+  };
 
-export function updateHeader(topicDisplayTitle, diff) {
-  initializeElements();
-  if (els.title) els.title.textContent = topicDisplayTitle;
-  if (els.chapterNameDisplay) {
-    els.chapterNameDisplay.textContent = topicDisplayTitle;
-    els.chapterNameDisplay.classList.remove("hidden");
-  }
-  if (els.diffBadge) {
-    els.diffBadge.textContent = `Difficulty: ${diff || "--"}`;
-    els.diffBadge.classList.remove("hidden");
-  }
+  Object.values(views).forEach((v) => v?.classList.add("hidden"));
+  views[viewName]?.classList.remove("hidden");
 }
