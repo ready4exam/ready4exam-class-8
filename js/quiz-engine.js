@@ -14,33 +14,34 @@ let quizState = {
     isSubmitted: false
 };
 
+/**
+ * Parses URL parameters to set quiz state and deduplicate header titles.
+ */
 function parseUrlParameters() {
     const params = new URLSearchParams(location.search);
     quizState.topicSlug = params.get("table") || params.get("topic") || "";
     quizState.difficulty = params.get("difficulty") || "Simple";
-    quizState.classId = params.get("class") || "8";
-    quizState.subject = params.get("subject") || "Science";
+    quizState.classId = params.get("class") || "11";
+    quizState.subject = params.get("subject") || "Physics";
 
-    // FIXED: Deduplication logic for Header
-    let rawChapter = quizState.topicSlug
-        .replace(/[_\d]/g, " ")
-        .replace(/quiz/ig, "")
-        .trim();
-
-    // Remove subject from chapter if it repeats (e.g., "Science Synthetic" -> "Synthetic")
+    // Deduplication logic for Header
+    let rawChapter = quizState.topicSlug.replace(/[_\d]/g, " ").replace(/quiz/ig, "").trim();
     const subjectRegex = new RegExp(`^${quizState.subject}\\s*`, 'i');
     let cleanChapter = rawChapter.replace(subjectRegex, "").trim();
-    
-    // Capitalize first letters
     cleanChapter = cleanChapter.replace(/\b\w/g, c => c.toUpperCase());
     
     const fullTitle = `Class ${quizState.classId}: ${quizState.subject} - ${cleanChapter} Worksheet`;
     UI.updateHeader(fullTitle, quizState.difficulty);
 }
 
+/**
+ * Fetches and processes question data from the database.
+ */
 async function loadQuiz() {
     try {
-        UI.showStatus("Preparing worksheet...");
+        // Show status during fetch
+        UI.showStatus("Preparing worksheet...", "text-blue-600 font-bold");
+        
         const rawQuestions = await fetchQuestions(quizState.topicSlug, quizState.difficulty);
         
         quizState.questions = rawQuestions.map(q => {
@@ -48,15 +49,13 @@ async function loadQuiz() {
             let processedReason = "";
             const type = (q.question_type || "").toLowerCase();
 
-            // FIXED: AR String Separation Logic
-            if (type.includes("ar") && processedText.includes("Reason (R):")) {
+            // Split Assertion and Reason if combined in question_text
+            if ((type.includes("ar") || type.includes("assertion")) && processedText.includes("Reason (R):")) {
                 const parts = processedText.split(/Reason\s*\(R\)\s*:/i);
                 processedText = parts[0].trim(); 
                 processedReason = parts[1].trim(); 
             } else {
-                // Hides meta-text like "Assertion and Reason statements are provided..."
-                processedReason = (q.scenario_reason_text && !q.scenario_reason_text.toLowerCase().includes("provided about")) 
-                                  ? q.scenario_reason_text : "";
+                processedReason = q.scenario_reason_text || "";
             }
 
             return {
@@ -65,16 +64,16 @@ async function loadQuiz() {
                 text: processedText,
                 scenario_reason: processedReason, 
                 correct_answer: (q.correct_answer_key || "").toUpperCase(),
-                options: {
-                    A: q.option_a || "",
-                    B: q.option_b || "",
-                    C: q.option_c || "",
-                    D: q.option_d || ""
+                options: { 
+                    A: q.option_a || "", B: q.option_b || "", 
+                    C: q.option_c || "", D: q.option_d || "" 
                 }
             };
         });
 
         if (quizState.questions.length > 0) {
+            // FIXED: Hide status text once quiz loads
+            UI.hideStatus(); 
             renderQuestion();
             UI.showView("quiz-content");
         }
@@ -101,15 +100,16 @@ function handleNavigation(delta) {
     renderQuestion();
 }
 
+/**
+ * Handles quiz submission and calculates performance stats for cognitive feedback.
+ */
 async function handleSubmit() {
     quizState.isSubmitted = true;
-    const correctCount = quizState.questions.filter(q => quizState.userAnswers[q.id] === q.correct_answer).length;
-    
     const stats = {
         total: quizState.questions.length,
-        correct: correctCount,
-        mcq: { c: 0, w: 0, t: 0 },
-        ar: { c: 0, w: 0, t: 0 },
+        correct: quizState.questions.filter(q => quizState.userAnswers[q.id] === q.correct_answer).length,
+        mcq: { c: 0, w: 0, t: 0 }, 
+        ar: { c: 0, w: 0, t: 0 }, 
         case: { c: 0, w: 0, t: 0 }
     };
 
@@ -124,22 +124,36 @@ async function handleSubmit() {
     UI.renderResults(stats, quizState.difficulty);
 }
 
+/**
+ * Attached event listeners to DOM, including fixed Back navigation.
+ */
 function attachDomEvents() {
     document.addEventListener("click", e => {
-        const btn = e.target.closest("button");
+        const btn = e.target.closest("button, a");
         if (!btn) return;
+
         if (btn.id === "prev-btn") handleNavigation(-1);
         if (btn.id === "next-btn") handleNavigation(1);
         if (btn.id === "submit-btn") handleSubmit();
         if (btn.id === "btn-review-errors") UI.renderAllQuestionsForReview(quizState.questions, quizState.userAnswers);
+        
+        // FIXED: Back to Chapter Selection
+        if (btn.id === "back-to-chapters-btn") {
+            const subject = quizState.subject || "Physics";
+            window.location.href = `chapter-selection.html?subject=${encodeURIComponent(subject)}`;
+        }
     });
 }
 
+/**
+ * App Initialization
+ */
 async function init() {
   UI.initializeElements();
   parseUrlParameters();
   attachDomEvents();
   UI.attachAnswerListeners(handleAnswerSelection);
+  
   await initializeServices(); 
   await initializeAuthListener(user => {
       if (user) loadQuiz();

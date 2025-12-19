@@ -1,6 +1,8 @@
 import { cleanKatexMarkers } from './utils.js';
 
 let els = {};
+let isInit = false;
+
 const AR_LABELS = {
     A: "Both A and R are true and R is the correct explanation of A.",
     B: "Both A and R are true but R is not the correct explanation of A.",
@@ -12,6 +14,7 @@ const AR_LABELS = {
    INITIALIZE DOM ELEMENTS
 ----------------------------------- */
 export function initializeElements() {
+    if (isInit) return;
     els = {
         list: document.getElementById("question-list"),
         header: document.getElementById("chapter-name-display"),
@@ -25,11 +28,12 @@ export function initializeElements() {
         submit: document.getElementById("submit-btn"),
         counter: document.getElementById("question-counter"),
         scoreBox: document.getElementById("score-display"),
+        curiosityBox: document.getElementById("curiosity-box"), // Added for Cognitive Feedback
         analysisModal: document.getElementById("analysis-modal"),
-        analysisContent: document.getElementById("analysis-content")
+        analysisContent: document.getElementById("analysis-content"),
+        welcomeUser: document.getElementById("user-welcome")
     };
 
-    // Initialize Review Container safely
     if (!document.getElementById("review-container") && els.results) {
         const rc = document.createElement("div");
         rc.id = "review-container";
@@ -37,6 +41,18 @@ export function initializeElements() {
         els.results.appendChild(rc);
         els.reviewContainer = rc;
     }
+    isInit = true;
+}
+
+/* -----------------------------------
+   MOTIVATIONAL FEEDBACK LOGIC
+----------------------------------- */
+function getMotivationalFeedback(score, total) {
+    const p = (score / total) * 100;
+    if (p === 100) return "🌟 Perfect Score! You are a Subject Matter Expert!";
+    if (p >= 80) return "🚀 Outstanding! You've mastered the core concepts of this chapter.";
+    if (p >= 50) return "📈 Good Progress! A little more practice and you'll reach the top.";
+    return "💡 Keep Going! Every mistake is a learning opportunity. Try again!";
 }
 
 /* -----------------------------------
@@ -67,6 +83,7 @@ function generateOptionHtml(q, opt, selected, submitted, labelText) {
    MAIN QUESTION RENDERER
 ----------------------------------- */
 export function renderQuestion(q, idx, selected, submitted) {
+    initializeElements();
     const type = (q.question_type || "").toLowerCase();
 
     // 1. PROFESSIONAL AR LAYOUT
@@ -77,11 +94,13 @@ export function renderQuestion(q, idx, selected, submitted) {
             <div class="space-y-6 text-left animate-fadeIn">
                 <div class="text-xl font-extrabold text-gray-900 leading-snug">
                     Q${idx}. Assertion (A): ${assertion}
-                    <div class="text-sm font-bold text-blue-600 mt-2 italic">Regarding the assertion and reason, choose the correct option.</div>
                 </div>
                 <div class="bg-blue-50 p-6 rounded-2xl border-l-4 border-blue-600 shadow-sm">
                     <span class="text-[10px] font-black uppercase tracking-widest text-blue-600 mb-2 block">Reason (R)</span>
-                    <div class="text-lg font-semibold text-gray-800 leading-relaxed">${q.scenario_reason}</div>
+                    <div class="text-lg font-semibold text-gray-800 mb-3">${q.scenario_reason}</div>
+                    <div class="text-sm font-bold text-blue-600 italic border-t border-blue-100 pt-2">
+                        Regarding the assertion and reason, choose the correct option.
+                    </div>
                 </div>
                 <div class="grid gap-3">
                     ${['A','B','C','D'].map(o => generateOptionHtml(q, o, selected, submitted, AR_LABELS[o])).join("")}
@@ -91,7 +110,6 @@ export function renderQuestion(q, idx, selected, submitted) {
     }
 
     // 2. CASE STUDY HINT LAYOUT
-    // Re-ordered: Question on LEFT, Study Hint on RIGHT
     if (type.includes("case")) {
         els.list.innerHTML = `
             <div class="grid grid-cols-1 md:grid-cols-2 gap-8 text-left animate-fadeIn">
@@ -123,8 +141,45 @@ export function renderQuestion(q, idx, selected, submitted) {
    RESULTS & ANALYSIS
 ----------------------------------- */
 export function renderResults(stats, diff) {
+    initializeElements();
     showView("results-screen");
-    if (els.scoreBox) els.scoreBox.textContent = `${stats.correct} / ${stats.total}`;
+
+    // Achievement & Motivational Text
+    if (els.scoreBox) {
+        const motivation = getMotivationalFeedback(stats.correct, stats.total);
+        els.scoreBox.innerHTML = `
+            <div class="text-5xl font-black text-blue-900 mb-2">${stats.correct} / ${stats.total}</div>
+            <div class="text-gray-500 font-bold italic">${motivation}</div>
+        `;
+    }
+
+    // Cognitive Feedback Blocks
+    if (els.curiosityBox) {
+        let strong = [], weak = [];
+        
+        // MCQ Logic
+        if ((stats.mcq.c / (stats.mcq.t || 1)) >= 0.7) strong.push("Foundational Recall: Your core definitions are solid.");
+        else weak.push("Foundational Recall: Revisit basic definitions in the textbook.");
+        
+        // AR Logic
+        if ((stats.ar.c / (stats.ar.t || 1)) < 0.6) weak.push("Logical Linking: Use the 'Because Test' for Assertion-Reason questions.");
+        else strong.push("Analytical Logic: You are connecting concepts and reasons effectively.");
+
+        // Case Based Logic
+        if ((stats.case.c / (stats.case.t || 1)) < 0.6) weak.push("Application: Practice applying concepts to real-world scenarios.");
+
+        els.curiosityBox.innerHTML = `
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+                <div class="p-5 bg-green-50 border border-green-100 rounded-3xl">
+                    <span class="text-green-700 font-black text-[10px] uppercase tracking-widest mb-2 block">What is Strong</span>
+                    <p class="text-green-800 font-medium text-sm">${strong.join(' ') || "Keep practicing to identify strengths!"}</p>
+                </div>
+                <div class="p-5 bg-red-50 border border-red-100 rounded-3xl">
+                    <span class="text-red-700 font-black text-[10px] uppercase tracking-widest mb-2 block">Needs Improvement</span>
+                    <p class="text-red-800 font-medium text-sm">${weak.join(' ') || "You're doing great across all categories!"}</p>
+                </div>
+            </div>`;
+    }
 
     const analysisBtn = document.getElementById('btn-show-analysis');
     if (analysisBtn) {
@@ -160,6 +215,7 @@ export function renderResults(stats, diff) {
    MISTAKE REVIEW SECTION
 ----------------------------------- */
 export function renderAllQuestionsForReview(qs, ua) {
+    initializeElements();
     if (!els.reviewContainer) return;
     els.reviewContainer.classList.remove("hidden");
 
@@ -201,12 +257,19 @@ export function renderAllQuestionsForReview(qs, ua) {
 /* -----------------------------------
    UTILITY UI UPDATES
 ----------------------------------- */
+export function hideStatus() { 
+    initializeElements(); 
+    if (els.status) els.status.classList.add("hidden"); 
+}
+
 export function updateHeader(t, d) { 
+    initializeElements();
     if (els.header) els.header.textContent = t; 
     if (els.diff) els.diff.textContent = `Difficulty: ${d}`; 
 }
 
 export function showView(v) { 
+    initializeElements();
     [els.quiz, els.results, els.paywall].forEach(x => x?.classList.add("hidden")); 
     if (v === "quiz-content") els.quiz?.classList.remove("hidden"); 
     if (v === "results-screen") els.results?.classList.remove("hidden"); 
@@ -214,6 +277,7 @@ export function showView(v) {
 }
 
 export function showStatus(msg, cls = "text-blue-600") { 
+    initializeElements();
     if (els.status) {
         els.status.textContent = msg; 
         els.status.className = `p-4 font-bold ${cls}`; 
@@ -222,6 +286,7 @@ export function showStatus(msg, cls = "text-blue-600") {
 }
 
 export function updateNavigation(i, t, s) { 
+    initializeElements();
     els.prev?.classList.toggle("hidden", i === 0); 
     els.next?.classList.toggle("hidden", i === t - 1); 
     els.submit?.classList.toggle("hidden", s || i !== t - 1); 
@@ -229,6 +294,7 @@ export function updateNavigation(i, t, s) {
 }
 
 export function attachAnswerListeners(fn) { 
+    initializeElements();
     if (els.list) {
         els.list.onchange = e => { 
             if (e.target.type === "radio") fn(e.target.name.substring(2), e.target.value); 
@@ -237,6 +303,7 @@ export function attachAnswerListeners(fn) {
 }
 
 export function updateAuthUI(user) {
+    initializeElements();
     if (els.welcomeUser && user) {
         els.welcomeUser.textContent = `Welcome, ${user.email.split('@')[0]}`;
         els.welcomeUser.classList.remove("hidden");
