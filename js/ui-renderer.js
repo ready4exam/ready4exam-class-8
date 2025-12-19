@@ -71,7 +71,7 @@ function generateOptionHtml(q, opt, selected, submitted, labelText) {
 
     return `
         <label class="block cursor-pointer group">
-            <input type="radio" name="q-${q.id}" value="${opt}" class="hidden" ${submitted ? 'disabled' : ''}>
+            <input type="radio" name="q-${q.id}" value="${opt}" class="hidden" ${isSel ? "checked" : ""} ${submitted ? 'disabled' : ''}>
             <div class="flex items-start p-4 border-2 rounded-xl transition-all ${borderCls}">
                 <span class="w-8 h-8 flex-shrink-0 flex items-center justify-center rounded-lg bg-gray-100 text-gray-700 font-bold mr-4 group-hover:bg-blue-100">${opt}</span>
                 <span class="font-medium pt-1 text-gray-800 leading-snug">${cleanKatexMarkers(text)}</span>
@@ -84,9 +84,10 @@ function generateOptionHtml(q, opt, selected, submitted, labelText) {
 ----------------------------------- */
 export function renderQuestion(q, idx, selected, submitted) {
     initializeElements();
+    if (!els.list) return;
     const type = (q.question_type || "").toLowerCase();
 
-    // 1. PROFESSIONAL AR LAYOUT
+    // 1. PROFESSIONAL AR LAYOUT (FIXED STYLING)
     if (type.includes("ar") || type.includes("assertion")) {
         const assertion = q.text.replace(/Assertion\s*\(A\)\s*:/gi, "").trim();
         
@@ -109,19 +110,19 @@ export function renderQuestion(q, idx, selected, submitted) {
         return;
     }
 
-    // 2. CASE STUDY HINT LAYOUT
+    // 2. CASE STUDY HINT LAYOUT (FIXED MOBILE ORDER)
     if (type.includes("case")) {
         els.list.innerHTML = `
             <div class="grid grid-cols-1 md:grid-cols-2 gap-8 text-left animate-fadeIn">
-                <div class="space-y-6 order-2 md:order-1">
+                <div class="space-y-6 order-last md:order-1">
                     <div class="text-xl font-extrabold text-gray-900 leading-snug">Q${idx}: ${q.text}</div>
                     <div class="grid gap-3">
                         ${['A','B','C','D'].map(o => generateOptionHtml(q, o, selected, submitted)).join("")}
                     </div>
                 </div>
-                <div class="p-6 bg-yellow-50 rounded-2xl border border-yellow-100 shadow-inner order-1 md:order-2 h-fit">
+                <div class="p-6 bg-yellow-50 rounded-2xl border border-yellow-100 shadow-inner order-first md:order-2 h-fit">
                     <h3 class="font-black mb-3 text-yellow-700 uppercase text-xs tracking-widest border-b border-yellow-200 pb-2">💡 Study Hint</h3>
-                    <p class="text-yellow-900 leading-relaxed font-medium italic">${q.scenario_reason}</p>
+                    <p class="text-yellow-900 leading-relaxed font-medium italic break-words">${q.scenario_reason}</p>
                 </div>
             </div>`;
         return;
@@ -138,7 +139,7 @@ export function renderQuestion(q, idx, selected, submitted) {
 }
 
 /* -----------------------------------
-   RESULTS & ANALYSIS
+   RESULTS & ANALYSIS (FIXED DISTORTION)
 ----------------------------------- */
 export function renderResults(stats, diff) {
     initializeElements();
@@ -146,9 +147,10 @@ export function renderResults(stats, diff) {
 
     if (els.scoreBox) {
         const motivation = getMotivationalFeedback(stats.correct, stats.total);
+        // FIXED: Added break-words and max-w for mobile
         els.scoreBox.innerHTML = `
             <div class="text-5xl font-black text-blue-900 mb-2">${stats.correct} / ${stats.total}</div>
-            <div class="text-gray-500 font-bold italic">${motivation}</div>
+            <div class="text-sm md:text-lg text-gray-500 font-bold italic break-words max-w-sm mx-auto px-4 leading-relaxed">${motivation}</div>
         `;
     }
 
@@ -156,53 +158,33 @@ export function renderResults(stats, diff) {
     if (analysisBtn) {
         analysisBtn.onclick = () => {
             let strong = [], weak = [];
-            
-            // Cognitive Logic based on performance stats
             if ((stats.mcq.c / (stats.mcq.t || 1)) >= 0.7) strong.push("Foundational Recall: Your core definitions are solid.");
             else weak.push("Foundational Recall: Revisit basic definitions in the textbook.");
-            
             if ((stats.ar.c / (stats.ar.t || 1)) < 0.6) weak.push("Logical Linking: Use the 'Because Test' for Assertion-Reason questions.");
             else strong.push("Analytical Logic: You connect concepts effectively.");
-
             if ((stats.case.c / (stats.case.t || 1)) < 0.6) weak.push("Application: Practice applying concepts to real-world scenarios.");
 
-            // Render Cognitive Feedback and Stats table inside the Modal
+            // FIXED: Render inside Modal
             els.analysisContent.innerHTML = `
                 <div class="space-y-6">
                     <div class="p-5 bg-green-50 border border-green-100 rounded-3xl">
                         <span class="text-green-700 font-black text-[10px] uppercase tracking-widest mb-2 block">What is Strong</span>
-                        <p class="text-green-800 font-medium text-sm">${strong.join(' ') || "Keep practicing to identify strengths!"}</p>
+                        <p class="text-green-800 font-medium text-sm">${strong.join(' ') || "Keep practicing!"}</p>
                     </div>
                     <div class="p-5 bg-red-50 border border-red-100 rounded-3xl">
                         <span class="text-red-700 font-black text-[10px] uppercase tracking-widest mb-2 block">Needs Improvement</span>
-                        <p class="text-red-800 font-medium text-sm">${weak.join(' ') || "Excellent mastery across categories!"}</p>
+                        <p class="text-red-800 font-medium text-sm">${weak.join(' ') || "Great work!"}</p>
                     </div>
-                    
                     <table class="w-full mt-6">
                         <thead>
                             <tr class="text-[10px] text-gray-400 uppercase tracking-widest">
-                                <th class="text-left py-2">Category</th>
-                                <th class="text-center py-2">Correct</th>
-                                <th class="text-center py-2">Wrong</th>
-                                <th class="text-right py-2">Accuracy</th>
+                                <th class="text-left py-2">Category</th><th class="text-center py-2">C</th><th class="text-center py-2">W</th><th class="text-right py-2">%</th>
                             </tr>
                         </thead>
                         <tbody>
-                        ${[
-                            { key: 'mcq', label: 'MCQ (Basic Facts)' },
-                            { key: 'ar', label: 'Assertion-Reason (Logic)' },
-                            { key: 'case', label: 'Case-Based (Context)' }
-                        ].map(cat => {
-                            const data = stats[cat.key];
-                            if (!data || data.t === 0) return "";
-                            const acc = Math.round((data.c / data.t) * 100);
-                            return `
-                                <tr class="border-b border-gray-100">
-                                    <td class="py-4 font-bold text-gray-700 text-sm">${cat.label}</td>
-                                    <td class="text-center font-bold text-green-600">${data.c}</td>
-                                    <td class="text-center font-bold text-red-500">${data.w}</td>
-                                    <td class="text-right font-black text-blue-700">${acc}%</td>
-                                </tr>`;
+                        ${[{k:'mcq',l:'MCQ'},{k:'ar',l:'A-R'},{k:'case',l:'Case'}].map(cat => {
+                            const d = stats[cat.k]; if (!d || d.t === 0) return "";
+                            return `<tr class="border-b"><td class="py-4 font-bold text-sm">${cat.l}</td><td class="text-center text-green-600">${d.c}</td><td class="text-center text-red-500">${d.w}</td><td class="text-right font-black text-blue-700">${Math.round((d.c/d.t)*100)}%</td></tr>`;
                         }).join('')}
                         </tbody>
                     </table>
@@ -225,11 +207,8 @@ export function renderAllQuestionsForReview(qs, ua) {
             <h3 class="text-xl font-black text-gray-900 uppercase tracking-tighter">Mistake Analysis & Correction</h3>
         </div>` + 
     qs.map((q, i) => {
-        const userChoice = ua[q.id];
-        const correctChoice = q.correct_answer;
-        const isCorrect = userChoice === correctChoice;
-        const isAR = q.question_type.toLowerCase().includes('ar');
-        
+        const userChoice = ua[q.id], correctChoice = q.correct_answer;
+        const isCorrect = userChoice === correctChoice, isAR = q.question_type.toLowerCase().includes('ar');
         const userText = userChoice ? (isAR ? AR_LABELS[userChoice] : q.options[userChoice]) : "Not Attempted";
         const correctText = isAR ? AR_LABELS[correctChoice] : q.options[correctChoice];
         
@@ -258,55 +237,10 @@ export function renderAllQuestionsForReview(qs, ua) {
 /* -----------------------------------
    UTILITY UI UPDATES
 ----------------------------------- */
-export function hideStatus() { 
-    initializeElements(); 
-    if (els.status) els.status.classList.add("hidden"); 
-}
-
-export function updateHeader(t, d) { 
-    initializeElements();
-    if (els.header) els.header.textContent = t; 
-    if (els.diff) els.diff.textContent = `Difficulty: ${d}`; 
-}
-
-export function showView(v) { 
-    initializeElements();
-    [els.quiz, els.results, els.paywall].forEach(x => x?.classList.add("hidden")); 
-    if (v === "quiz-content") els.quiz?.classList.remove("hidden"); 
-    if (v === "results-screen") els.results?.classList.remove("hidden"); 
-    if (v === "paywall-screen") els.paywall?.classList.remove("hidden"); 
-}
-
-export function showStatus(msg, cls = "text-blue-600") { 
-    initializeElements();
-    if (els.status) {
-        els.status.textContent = msg; 
-        els.status.className = `p-4 font-bold ${cls}`; 
-        els.status.classList.remove("hidden"); 
-    }
-}
-
-export function updateNavigation(i, t, s) { 
-    initializeElements();
-    els.prev?.classList.toggle("hidden", i === 0); 
-    els.next?.classList.toggle("hidden", i === t - 1); 
-    els.submit?.classList.toggle("hidden", s || i !== t - 1); 
-    if (els.counter) els.counter.textContent = `${String(i + 1).padStart(2, "0")} / ${t}`; 
-}
-
-export function attachAnswerListeners(fn) { 
-    initializeElements();
-    if (els.list) {
-        els.list.onchange = e => { 
-            if (e.target.type === "radio") fn(e.target.name.substring(2), e.target.value); 
-        }; 
-    }
-}
-
-export function updateAuthUI(user) {
-    initializeElements();
-    if (els.welcomeUser && user) {
-        els.welcomeUser.textContent = `Welcome, ${user.email.split('@')[0]}`;
-        els.welcomeUser.classList.remove("hidden");
-    }
-}
+export function hideStatus() { initializeElements(); if (els.status) els.status.classList.add("hidden"); }
+export function updateHeader(t, d) { initializeElements(); if (els.header) els.header.textContent = t; if (els.diff) els.diff.textContent = `Difficulty: ${d}`; }
+export function showView(v) { initializeElements(); [els.quiz, els.results, els.paywall].forEach(x => x?.classList.add("hidden")); if (v === "quiz-content") els.quiz?.classList.remove("hidden"); if (v === "results-screen") els.results?.classList.remove("hidden"); if (v === "paywall-screen") els.paywall?.classList.remove("hidden"); }
+export function showStatus(msg, cls = "text-blue-600") { initializeElements(); if (els.status) { els.status.textContent = msg; els.status.className = `p-4 font-bold ${cls}`; els.status.classList.remove("hidden"); } }
+export function updateNavigation(i, t, s) { initializeElements(); els.prev?.classList.toggle("hidden", i === 0); els.next?.classList.toggle("hidden", i === t - 1); els.submit?.classList.toggle("hidden", s || i !== t - 1); if (els.counter) els.counter.textContent = `${String(i + 1).padStart(2, "0")} / ${t}`; }
+export function attachAnswerListeners(fn) { initializeElements(); if (els.list) { els.list.onchange = e => { if (e.target.type === "radio") fn(e.target.name.substring(2), e.target.value); }; } }
+export function updateAuthUI(user) { initializeElements(); if (els.welcomeUser && user) { els.welcomeUser.textContent = `Welcome, ${user.email.split('@')[0]}`; els.welcomeUser.classList.remove("hidden"); } }
