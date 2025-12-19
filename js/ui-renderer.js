@@ -28,7 +28,7 @@ export function initializeElements() {
         submit: document.getElementById("submit-btn"),
         counter: document.getElementById("question-counter"),
         scoreBox: document.getElementById("score-display"),
-        curiosityBox: document.getElementById("curiosity-box"), // Added for Cognitive Feedback
+        curiosityBox: document.getElementById("curiosity-box"), 
         analysisModal: document.getElementById("analysis-modal"),
         analysisContent: document.getElementById("analysis-content"),
         welcomeUser: document.getElementById("user-welcome")
@@ -97,10 +97,10 @@ export function renderQuestion(q, idx, selected, submitted) {
                 </div>
                 <div class="bg-blue-50 p-6 rounded-2xl border-l-4 border-blue-600 shadow-sm">
                     <span class="text-[10px] font-black uppercase tracking-widest text-blue-600 mb-2 block">Reason (R)</span>
-                    <div class="text-lg font-semibold text-gray-800 mb-3">${q.scenario_reason}</div>
-                    <div class="text-sm font-bold text-blue-600 italic border-t border-blue-100 pt-2">
-                        Regarding the assertion and reason, choose the correct option.
-                    </div>
+                    <div class="text-lg font-semibold text-gray-800">${q.scenario_reason}</div>
+                </div>
+                <div class="text-sm font-bold text-blue-600 italic px-2">
+                    Regarding the assertion and reason, choose the correct option.
                 </div>
                 <div class="grid gap-3">
                     ${['A','B','C','D'].map(o => generateOptionHtml(q, o, selected, submitted, AR_LABELS[o])).join("")}
@@ -144,7 +144,7 @@ export function renderResults(stats, diff) {
     initializeElements();
     showView("results-screen");
 
-    // Achievement & Motivational Text
+    // FIXED: Motivational Score Text
     if (els.scoreBox) {
         const motivation = getMotivationalFeedback(stats.correct, stats.total);
         els.scoreBox.innerHTML = `
@@ -153,60 +153,62 @@ export function renderResults(stats, diff) {
         `;
     }
 
-    // Cognitive Feedback Blocks
-    if (els.curiosityBox) {
-        let strong = [], weak = [];
-        
-        // MCQ Logic
-        if ((stats.mcq.c / (stats.mcq.t || 1)) >= 0.7) strong.push("Foundational Recall: Your core definitions are solid.");
-        else weak.push("Foundational Recall: Revisit basic definitions in the textbook.");
-        
-        // AR Logic
-        if ((stats.ar.c / (stats.ar.t || 1)) < 0.6) weak.push("Logical Linking: Use the 'Because Test' for Assertion-Reason questions.");
-        else strong.push("Analytical Logic: You are connecting concepts and reasons effectively.");
-
-        // Case Based Logic
-        if ((stats.case.c / (stats.case.t || 1)) < 0.6) weak.push("Application: Practice applying concepts to real-world scenarios.");
-
-        els.curiosityBox.innerHTML = `
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-                <div class="p-5 bg-green-50 border border-green-100 rounded-3xl">
-                    <span class="text-green-700 font-black text-[10px] uppercase tracking-widest mb-2 block">What is Strong</span>
-                    <p class="text-green-800 font-medium text-sm">${strong.join(' ') || "Keep practicing to identify strengths!"}</p>
-                </div>
-                <div class="p-5 bg-red-50 border border-red-100 rounded-3xl">
-                    <span class="text-red-700 font-black text-[10px] uppercase tracking-widest mb-2 block">Needs Improvement</span>
-                    <p class="text-red-800 font-medium text-sm">${weak.join(' ') || "You're doing great across all categories!"}</p>
-                </div>
-            </div>`;
-    }
-
     const analysisBtn = document.getElementById('btn-show-analysis');
     if (analysisBtn) {
         analysisBtn.onclick = () => {
-            const rows = [];
-            const categories = [
-                { key: 'mcq', label: 'MCQ (Basic Facts)' },
-                { key: 'ar', label: 'Assertion-Reason (Logic)' },
-                { key: 'case', label: 'Case-Based (Context)' }
-            ];
-            categories.forEach(cat => {
-                const data = stats[cat.key];
-                if (data && data.t > 0) {
-                    const acc = Math.round((data.c / data.t) * 100);
-                    rows.push(`
-                        <tr class="border-b border-gray-100">
-                            <td class="py-4 font-bold text-gray-700">${cat.label}</td>
-                            <td class="text-center font-bold text-green-600">${data.c}</td>
-                            <td class="text-center font-bold text-red-500">${data.w}</td>
-                            <td class="text-right font-black text-blue-700">${acc}%</td>
-                        </tr>`);
-                }
-            });
-            if (els.analysisContent) {
-                els.analysisContent.innerHTML = `<table class="w-full"><tbody>${rows.join('')}</tbody></table>`;
-                els.analysisModal?.classList.remove('hidden');
-            }
+            let strong = [], weak = [];
+            
+            // Cognitive Logic
+            if ((stats.mcq.c / (stats.mcq.t || 1)) >= 0.7) strong.push("Foundational Recall: Your core definitions are solid.");
+            else weak.push("Foundational Recall: Revisit basic definitions in the textbook.");
+            
+            if ((stats.ar.c / (stats.ar.t || 1)) < 0.6) weak.push("Logical Linking: Use the 'Because Test' for Assertion-Reason questions.");
+            else strong.push("Analytical Logic: You connect concepts effectively.");
+
+            if ((stats.case.c / (stats.case.t || 1)) < 0.6) weak.push("Application: Practice applying concepts to real-world scenarios.");
+
+            // FIXED: Render Cognitive Feedback inside the Modal
+            els.analysisContent.innerHTML = `
+                <div class="space-y-6">
+                    <div class="p-5 bg-green-50 border border-green-100 rounded-3xl">
+                        <span class="text-green-700 font-black text-[10px] uppercase tracking-widest mb-2 block">What is Strong</span>
+                        <p class="text-green-800 font-medium text-sm">${strong.join(' ') || "Keep practicing to identify strengths!"}</p>
+                    </div>
+                    <div class="p-5 bg-red-50 border border-red-100 rounded-3xl">
+                        <span class="text-red-700 font-black text-[10px] uppercase tracking-widest mb-2 block">Needs Improvement</span>
+                        <p class="text-red-800 font-medium text-sm">${weak.join(' ') || "Excellent mastery across categories!"}</p>
+                    </div>
+                    
+                    <table class="w-full mt-6">
+                        <thead>
+                            <tr class="text-[10px] text-gray-400 uppercase tracking-widest">
+                                <th class="text-left py-2">Category</th>
+                                <th class="text-center py-2">Correct</th>
+                                <th class="text-center py-2">Wrong</th>
+                                <th class="text-right py-2">Accuracy</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        ${[
+                            { key: 'mcq', label: 'MCQ (Basic Facts)' },
+                            { key: 'ar', label: 'Assertion-Reason (Logic)' },
+                            { key: 'case', label: 'Case-Based (Context)' }
+                        ].map(cat => {
+                            const data = stats[cat.key];
+                            if (!data || data.t === 0) return "";
+                            const acc = Math.round((data.c / data.t) * 100);
+                            return `
+                                <tr class="border-b border-gray-100">
+                                    <td class="py-4 font-bold text-gray-700 text-sm">${cat.label}</td>
+                                    <td class="text-center font-bold text-green-600">${data.c}</td>
+                                    <td class="text-center font-bold text-red-500">${data.w}</td>
+                                    <td class="text-right font-black text-blue-700">${acc}%</td>
+                                </tr>`;
+                        }).join('')}
+                        </tbody>
+                    </table>
+                </div>`;
+            els.analysisModal?.classList.remove('hidden');
         };
     }
 }
