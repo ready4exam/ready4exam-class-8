@@ -1,3 +1,4 @@
+import { initializeServices, getAuthUser } from "./config.js"; 
 import { fetchQuestions, saveResult } from "./api.js";
 import * as UI from "./ui-renderer.js";
 import { checkAccess, initializeAuthListener } from "./auth-paywall.js";
@@ -17,17 +18,23 @@ function parseUrlParameters() {
     const params = new URLSearchParams(location.search);
     quizState.topicSlug = params.get("table") || params.get("topic") || "";
     quizState.difficulty = params.get("difficulty") || "Simple";
-    quizState.classId = params.get("class") || "8"; // Defaults to 8 if missing
-    quizState.subject = params.get("subject") || "Science"; // Defaults to Science if missing
+    quizState.classId = params.get("class") || "8";
+    quizState.subject = params.get("subject") || "Science";
 
-    // FIXED: Dynamic Header Slug reconstruction
-    const chapterName = quizState.topicSlug
+    // FIXED: Deduplication logic for Header
+    let rawChapter = quizState.topicSlug
         .replace(/[_\d]/g, " ")
         .replace(/quiz/ig, "")
-        .trim()
-        .replace(/\b\w/g, c => c.toUpperCase());
+        .trim();
+
+    // Remove subject from chapter if it repeats (e.g., "Science Synthetic" -> "Synthetic")
+    const subjectRegex = new RegExp(`^${quizState.subject}\\s*`, 'i');
+    let cleanChapter = rawChapter.replace(subjectRegex, "").trim();
     
-    const fullTitle = `Class ${quizState.classId}: ${quizState.subject} - ${chapterName} Worksheet`;
+    // Capitalize first letters
+    cleanChapter = cleanChapter.replace(/\b\w/g, c => c.toUpperCase());
+    
+    const fullTitle = `Class ${quizState.classId}: ${quizState.subject} - ${cleanChapter} Worksheet`;
     UI.updateHeader(fullTitle, quizState.difficulty);
 }
 
@@ -42,14 +49,14 @@ async function loadQuiz() {
             const type = (q.question_type || "").toLowerCase();
 
             // FIXED: AR String Separation Logic
-            // If the database has combined the Assertion and Reason in one field
             if (type.includes("ar") && processedText.includes("Reason (R):")) {
                 const parts = processedText.split(/Reason\s*\(R\)\s*:/i);
                 processedText = parts[0].trim(); 
                 processedReason = parts[1].trim(); 
             } else {
-                // Fallback if they are already separate
-                processedReason = q.scenario_reason_text || "";
+                // Hides meta-text like "Assertion and Reason statements are provided..."
+                processedReason = (q.scenario_reason_text && !q.scenario_reason_text.toLowerCase().includes("provided about")) 
+                                  ? q.scenario_reason_text : "";
             }
 
             return {
@@ -70,8 +77,6 @@ async function loadQuiz() {
         if (quizState.questions.length > 0) {
             renderQuestion();
             UI.showView("quiz-content");
-        } else {
-            throw new Error("No questions available for this level.");
         }
     } catch (e) {
         UI.showStatus(`Error: ${e.message}`, "text-red-600");
@@ -98,9 +103,11 @@ function handleNavigation(delta) {
 
 async function handleSubmit() {
     quizState.isSubmitted = true;
+    const correctCount = quizState.questions.filter(q => quizState.userAnswers[q.id] === q.correct_answer).length;
+    
     const stats = {
         total: quizState.questions.length,
-        correct: quizState.questions.filter(q => quizState.userAnswers[q.id] === q.correct_answer).length,
+        correct: correctCount,
         mcq: { c: 0, w: 0, t: 0 },
         ar: { c: 0, w: 0, t: 0 },
         case: { c: 0, w: 0, t: 0 }
@@ -129,15 +136,15 @@ function attachDomEvents() {
 }
 
 async function init() {
-    UI.initializeElements();
-    parseUrlParameters();
-    attachDomEvents();
-    UI.attachAnswerListeners(handleAnswerSelection);
-    await initializeServices();
-    await initializeAuthListener(user => {
-        if (user) loadQuiz();
-        else UI.showView("paywall-screen");
-    });
+  UI.initializeElements();
+  parseUrlParameters();
+  attachDomEvents();
+  UI.attachAnswerListeners(handleAnswerSelection);
+  await initializeServices(); 
+  await initializeAuthListener(user => {
+      if (user) loadQuiz();
+      else UI.showView("paywall-screen");
+  });
 }
 
 document.addEventListener("DOMContentLoaded", init);
