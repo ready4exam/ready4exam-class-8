@@ -87,7 +87,7 @@ export function renderQuestion(q, idx, selected, submitted) {
     if (!els.list) return;
     const type = (q.question_type || "").toLowerCase();
 
-    // 1. PROFESSIONAL AR LAYOUT (FIXED STYLING)
+    // 1. PROFESSIONAL AR LAYOUT
     if (type.includes("ar") || type.includes("assertion")) {
         const assertion = q.text.replace(/Assertion\s*\(A\)\s*:/gi, "").trim();
         
@@ -110,17 +110,17 @@ export function renderQuestion(q, idx, selected, submitted) {
         return;
     }
 
-    // 2. CASE STUDY HINT LAYOUT (FIXED MOBILE ORDER)
+    // 2. CASE STUDY HINT LAYOUT (REVERSED ON MOBILE)
     if (type.includes("case")) {
         els.list.innerHTML = `
             <div class="grid grid-cols-1 md:grid-cols-2 gap-8 text-left animate-fadeIn">
-                <div class="space-y-6 order-last md:order-1">
+                <div class="space-y-6 order-first md:order-1">
                     <div class="text-xl font-extrabold text-gray-900 leading-snug">Q${idx}: ${q.text}</div>
                     <div class="grid gap-3">
                         ${['A','B','C','D'].map(o => generateOptionHtml(q, o, selected, submitted)).join("")}
                     </div>
                 </div>
-                <div class="p-6 bg-yellow-50 rounded-2xl border border-yellow-100 shadow-inner order-first md:order-2 h-fit">
+                <div class="p-6 bg-yellow-50 rounded-2xl border border-yellow-100 shadow-inner order-last md:order-2 h-fit">
                     <h3 class="font-black mb-3 text-yellow-700 uppercase text-xs tracking-widest border-b border-yellow-200 pb-2">💡 Study Hint</h3>
                     <p class="text-yellow-900 leading-relaxed font-medium italic break-words">${q.scenario_reason}</p>
                 </div>
@@ -139,7 +139,7 @@ export function renderQuestion(q, idx, selected, submitted) {
 }
 
 /* -----------------------------------
-   RESULTS & ANALYSIS (FIXED DISTORTION)
+   RESULTS & ANALYSIS
 ----------------------------------- */
 export function renderResults(stats, diff) {
     initializeElements();
@@ -147,10 +147,12 @@ export function renderResults(stats, diff) {
 
     if (els.scoreBox) {
         const motivation = getMotivationalFeedback(stats.correct, stats.total);
-        // FIXED: Added break-words and max-w for mobile
+        // FIXED: Mobile distortion prevented with break-words and max-w-sm
         els.scoreBox.innerHTML = `
-            <div class="text-5xl font-black text-blue-900 mb-2">${stats.correct} / ${stats.total}</div>
-            <div class="text-sm md:text-lg text-gray-500 font-bold italic break-words max-w-sm mx-auto px-4 leading-relaxed">${motivation}</div>
+            <div class="text-4xl md:text-5xl font-black text-blue-900 mb-2">${stats.correct} / ${stats.total}</div>
+            <div class="text-sm md:text-lg text-gray-500 font-bold italic leading-relaxed break-words max-w-sm mx-auto px-4">
+                ${motivation}
+            </div>
         `;
     }
 
@@ -158,13 +160,15 @@ export function renderResults(stats, diff) {
     if (analysisBtn) {
         analysisBtn.onclick = () => {
             let strong = [], weak = [];
+            
             if ((stats.mcq.c / (stats.mcq.t || 1)) >= 0.7) strong.push("Foundational Recall: Your core definitions are solid.");
             else weak.push("Foundational Recall: Revisit basic definitions in the textbook.");
+            
             if ((stats.ar.c / (stats.ar.t || 1)) < 0.6) weak.push("Logical Linking: Use the 'Because Test' for Assertion-Reason questions.");
             else strong.push("Analytical Logic: You connect concepts effectively.");
+
             if ((stats.case.c / (stats.case.t || 1)) < 0.6) weak.push("Application: Practice applying concepts to real-world scenarios.");
 
-            // FIXED: Render inside Modal
             els.analysisContent.innerHTML = `
                 <div class="space-y-6">
                     <div class="p-5 bg-green-50 border border-green-100 rounded-3xl">
@@ -173,8 +177,9 @@ export function renderResults(stats, diff) {
                     </div>
                     <div class="p-5 bg-red-50 border border-red-100 rounded-3xl">
                         <span class="text-red-700 font-black text-[10px] uppercase tracking-widest mb-2 block">Needs Improvement</span>
-                        <p class="text-red-800 font-medium text-sm">${weak.join(' ') || "Great work!"}</p>
+                        <p class="text-red-800 font-medium text-sm">${weak.join(' ') || "Excellent work!"}</p>
                     </div>
+                    
                     <table class="w-full mt-6">
                         <thead>
                             <tr class="text-[10px] text-gray-400 uppercase tracking-widest">
@@ -182,9 +187,14 @@ export function renderResults(stats, diff) {
                             </tr>
                         </thead>
                         <tbody>
-                        ${[{k:'mcq',l:'MCQ'},{k:'ar',l:'A-R'},{k:'case',l:'Case'}].map(cat => {
-                            const d = stats[cat.k]; if (!d || d.t === 0) return "";
-                            return `<tr class="border-b"><td class="py-4 font-bold text-sm">${cat.l}</td><td class="text-center text-green-600">${d.c}</td><td class="text-center text-red-500">${d.w}</td><td class="text-right font-black text-blue-700">${Math.round((d.c/d.t)*100)}%</td></tr>`;
+                        ${[
+                            { key: 'mcq', label: 'MCQ (Facts)' },
+                            { key: 'ar', label: 'A-R (Logic)' },
+                            { key: 'case', label: 'Case (Context)' }
+                        ].map(cat => {
+                            const data = stats[cat.key];
+                            if (!data || data.t === 0) return "";
+                            return `<tr class="border-b"><td class="py-4 font-bold text-sm">${cat.label}</td><td class="text-center text-green-600">${data.c}</td><td class="text-center text-red-500">${data.w}</td><td class="text-right font-black text-blue-700">${Math.round((data.c/data.t)*100)}%</td></tr>`;
                         }).join('')}
                         </tbody>
                     </table>
