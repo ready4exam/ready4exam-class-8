@@ -28,7 +28,7 @@ export function initializeElements() {
         submit: document.getElementById("submit-btn"),
         counter: document.getElementById("question-counter"),
         scoreBox: document.getElementById("score-display"),
-        curiosityBox: document.getElementById("curiosity-box"), 
+        curiosityBox: document.getElementById("curiosity-box"),
         analysisModal: document.getElementById("analysis-modal"),
         analysisContent: document.getElementById("analysis-content"),
         welcomeUser: document.getElementById("user-welcome")
@@ -97,9 +97,9 @@ export function renderQuestion(q, idx, selected, submitted) {
                 </div>
                 <div class="bg-blue-50 p-6 rounded-2xl border-l-4 border-blue-600 shadow-sm">
                     <span class="text-[10px] font-black uppercase tracking-widest text-blue-600 mb-2 block">Reason (R)</span>
-                    <div class="text-lg font-semibold text-gray-800">${q.scenario_reason}</div>
+                    <div class="text-lg font-bold text-gray-800">${q.scenario_reason}</div>
                 </div>
-                <div class="text-sm font-bold text-blue-600 italic px-2">
+                <div class="text-sm font-black text-gray-900 italic px-2">
                     Regarding the assertion and reason, choose the correct option.
                 </div>
                 <div class="grid gap-3">
@@ -144,7 +144,6 @@ export function renderResults(stats, diff) {
     initializeElements();
     showView("results-screen");
 
-    // FIXED: Motivational Score Text
     if (els.scoreBox) {
         const motivation = getMotivationalFeedback(stats.correct, stats.total);
         els.scoreBox.innerHTML = `
@@ -158,7 +157,7 @@ export function renderResults(stats, diff) {
         analysisBtn.onclick = () => {
             let strong = [], weak = [];
             
-            // Cognitive Logic
+            // Cognitive Logic based on performance stats
             if ((stats.mcq.c / (stats.mcq.t || 1)) >= 0.7) strong.push("Foundational Recall: Your core definitions are solid.");
             else weak.push("Foundational Recall: Revisit basic definitions in the textbook.");
             
@@ -167,7 +166,7 @@ export function renderResults(stats, diff) {
 
             if ((stats.case.c / (stats.case.t || 1)) < 0.6) weak.push("Application: Practice applying concepts to real-world scenarios.");
 
-            // FIXED: Render Cognitive Feedback inside the Modal
+            // Render Cognitive Feedback and Stats table inside the Modal
             els.analysisContent.innerHTML = `
                 <div class="space-y-6">
                     <div class="p-5 bg-green-50 border border-green-100 rounded-3xl">

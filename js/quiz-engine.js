@@ -27,7 +27,7 @@ function parseUrlParameters() {
     // FIXED: Capture entire chapter name and prevent Subject repetition in Header
     let chapterPart = quizState.topicSlug.replace(/[_\d]/g, " ").replace(/quiz/ig, "").trim();
     
-    // Remove the subject if it's at the start to avoid "Physics Physics"
+    // Deduplicate: Remove subject from the start if it repeats (e.g., "Physics Physics")
     const subjectRegex = new RegExp(`^${quizState.subject}\\s*`, 'i');
     chapterPart = chapterPart.replace(subjectRegex, "").trim();
     const cleanName = chapterPart.replace(/\b\w/g, c => c.toUpperCase());
