@@ -1,3 +1,4 @@
+// js/ui-renderer.js
 import { cleanKatexMarkers } from './utils.js';
 
 let els = {};
@@ -40,7 +41,6 @@ export function initializeElements() {
         els.results.appendChild(rc);
         els.reviewContainer = rc;
     }
-
     isInit = true;
 }
 
@@ -59,23 +59,22 @@ function getMotivationalFeedback(score, total) {
    OPTION HTML
 ----------------------------------- */
 function generateOptionHtml(q, opt, selected, submitted, labelText) {
-    const text = labelText || q.options[opt] || "";
+    const text = labelText || (q.options ? q.options[opt] : "") || "";
     const isSel = selected === opt;
     const isCorrect = submitted && q.correct_answer === opt;
     const isWrong = submitted && isSel && !isCorrect;
 
-    const cls =
-        isCorrect ? "border-green-600 bg-green-50" :
-        isWrong ? "border-red-600 bg-red-50" :
-        isSel ? "border-blue-500 bg-blue-50" :
-        "border-gray-100 bg-white hover:border-blue-300";
+    const cls = isCorrect ? "border-green-600 bg-green-50" :
+                isWrong ? "border-red-600 bg-red-50" :
+                isSel ? "border-blue-500 bg-blue-50" :
+                "border-gray-100 bg-white active:bg-gray-50";
 
     return `
         <label class="block cursor-pointer">
-            <input type="radio" name="q-${q.id}" value="${opt}" class="hidden"
+            <input type="radio" name="q-${q.id}" data-id="${q.id}" value="${opt}" class="hidden"
                 ${isSel ? "checked" : ""} ${submitted ? "disabled" : ""}>
-            <div class="flex items-start p-4 border-2 rounded-xl ${cls}">
-                <span class="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-100 font-bold mr-4">${opt}</span>
+            <div class="flex items-start p-4 border-2 rounded-xl transition-colors ${cls}">
+                <span class="w-8 h-8 flex-shrink-0 flex items-center justify-center rounded-lg bg-gray-100 font-bold mr-4">${opt}</span>
                 <span class="font-medium">${cleanKatexMarkers(text)}</span>
             </div>
         </label>`;
@@ -85,59 +84,46 @@ function generateOptionHtml(q, opt, selected, submitted, labelText) {
    QUESTION RENDERER
 ----------------------------------- */
 export function renderQuestion(q, idx, selected, submitted) {
-    initializeElements();
+    if (!isInit) initializeElements();
     const type = (q.question_type || "").toLowerCase();
 
-    /* ASSERTION–REASON */
     if (type.includes("ar") || type.includes("assertion")) {
-        let A = q.text || "";
-        let R = q.scenario_reason || "";
-
-        A = A.replace(/Assertion\s*\(A\)\s*:/ig, "").trim();
-        R = R.replace(/Reason\s*\(R\)\s*:/ig, "").trim();
-
         els.list.innerHTML = `
             <div class="space-y-6">
-                <div class="text-xl font-extrabold">Q${idx}. Assertion (A): ${A}</div>
+                <div class="text-xl font-extrabold text-slate-900">Q${idx}. Assertion (A): ${cleanKatexMarkers(q.text)}</div>
                 <div class="bg-blue-50 p-6 rounded-2xl border-l-4 border-blue-600">
-                    <span class="text-xs font-black uppercase">Reason (R)</span>
-                    <div class="text-lg font-bold">${R}</div>
+                    <span class="text-xs font-black uppercase tracking-widest text-blue-600">Reason (R)</span>
+                    <div class="text-lg font-bold text-slate-800">${cleanKatexMarkers(q.scenario_reason)}</div>
                 </div>
-                <div class="italic font-bold">Choose the correct option.</div>
+                <div class="italic font-bold text-slate-500 text-sm">Choose the correct option:</div>
                 <div class="grid gap-3">
-                    ${['A','B','C','D'].map(o =>
-                        generateOptionHtml(q, o, selected, submitted, AR_LABELS[o])
-                    ).join("")}
+                    ${['A','B','C','D'].map(o => generateOptionHtml(q, o, selected, submitted, AR_LABELS[o])).join("")}
                 </div>
             </div>`;
         return;
     }
 
-    /* CASE STUDY */
     if (type.includes("case")) {
         els.list.innerHTML = `
             <div class="grid md:grid-cols-2 gap-8">
-                <div>
-                    <div class="text-xl font-extrabold">Q${idx}: ${q.text}</div>
+                <div class="order-2 md:order-1">
+                    <div class="text-xl font-extrabold">Q${idx}: ${cleanKatexMarkers(q.text)}</div>
                     <div class="grid gap-3 mt-4">
-                        ${['A','B','C','D'].map(o =>
-                            generateOptionHtml(q, o, selected, submitted)
-                        ).join("")}
+                        ${['A','B','C','D'].map(o => generateOptionHtml(q, o, selected, submitted)).join("")}
                     </div>
                 </div>
-                <div class="bg-yellow-50 p-6 rounded-2xl italic">${q.scenario_reason}</div>
+                <div class="order-1 md:order-2 bg-yellow-50 p-6 rounded-2xl italic border border-yellow-100 shadow-sm text-sm">
+                    ${cleanKatexMarkers(q.scenario_reason)}
+                </div>
             </div>`;
         return;
     }
 
-    /* MCQ */
     els.list.innerHTML = `
         <div class="space-y-6">
             <div class="text-xl font-extrabold">Q${idx}: ${cleanKatexMarkers(q.text)}</div>
             <div class="grid gap-3">
-                ${['A','B','C','D'].map(o =>
-                    generateOptionHtml(q, o, selected, submitted)
-                ).join("")}
+                ${['A','B','C','D'].map(o => generateOptionHtml(q, o, selected, submitted)).join("")}
             </div>
         </div>`;
 }
@@ -146,51 +132,25 @@ export function renderQuestion(q, idx, selected, submitted) {
    RESULTS + COGNITIVE FEEDBACK
 ----------------------------------- */
 export function renderResults(stats, diff) {
-    initializeElements();
+    if (!isInit) initializeElements();
     showView("results-screen");
 
     const motivation = getMotivationalFeedback(stats.correct, stats.total);
 
-    /* MOBILE-SAFE SCORE */
     els.scoreBox.innerHTML = `
-        <div class="text-4xl font-black text-slate-900">
-            ${stats.correct} / ${stats.total}
-        </div>
-        <div class="mt-3 px-4 py-3 bg-blue-50 rounded-2xl 
-                    text-sm font-bold text-blue-800 
-                    leading-relaxed text-center">
+        <div class="text-4xl font-black text-slate-900">${stats.correct} / ${stats.total}</div>
+        <div class="mt-3 px-4 py-3 bg-blue-50 rounded-2xl text-sm font-bold text-blue-800 leading-relaxed text-center">
             ${motivation}
-        </div>
-    `;
+        </div>`;
 
-    /* COGNITIVE FEEDBACK */
-    setTimeout(() => {
-        const analysisBtn = document.getElementById("btn-show-analysis");
-        if (!analysisBtn) return;
-
+    const analysisBtn = document.getElementById("btn-show-analysis");
+    if (analysisBtn) {
         analysisBtn.onclick = () => {
-
             const getScore = t => stats[t].t ? stats[t].c / stats[t].t : 0;
-
             const skills = [
-                {
-                    name: "Memory Power (MCQ)",
-                    score: getScore("mcq"),
-                    strength: "You recall definitions and facts confidently.",
-                    improve: "Revise key points and summaries for better retention."
-                },
-                {
-                    name: "Logic & Connection (Assertion–Reason)",
-                    score: getScore("ar"),
-                    strength: "You understand cause–effect relationships well.",
-                    improve: "Practice explaining why statements support each other."
-                },
-                {
-                    name: "Application of Concepts (Case Study)",
-                    score: getScore("case"),
-                    strength: "You apply concepts to real situations effectively.",
-                    improve: "Break problems into steps before answering."
-                }
+                { name: "Memory Power (MCQ)", score: getScore("mcq"), strength: "You recall definitions and facts confidently.", improve: "Revise key points and summaries for better retention." },
+                { name: "Logic & Connection (Assertion–Reason)", score: getScore("ar"), strength: "You understand cause–effect relationships well.", improve: "Practice explaining why statements support each other." },
+                { name: "Application of Concepts (Case Study)", score: getScore("case"), strength: "You apply concepts to real situations effectively.", improve: "Break problems into steps before answering." }
             ];
 
             const strong = skills.filter(s => s.score >= 0.7).map(s => s.name);
@@ -198,115 +158,111 @@ export function renderResults(stats, diff) {
 
             els.analysisContent.innerHTML = `
                 <div class="space-y-5">
-
                     <div class="p-5 rounded-3xl bg-slate-50 border">
-                        <h4 class="text-sm font-black uppercase tracking-widest mb-2">
-                            Overall Cognitive Insight
-                        </h4>
+                        <h4 class="text-sm font-black uppercase tracking-widest mb-2 text-slate-400">Overall Cognitive Insight</h4>
                         <p class="text-sm leading-relaxed">
                             <b>Strength:</b> ${strong.length ? strong.join(", ") : "You are building your foundation steadily."}
                             <br>
-                            <b>Needs Improvement:</b> ${weak.length ? weak.join(", ") : "Continue challenging yourself with higher-level questions."}
+                            <b>Needs Improvement:</b> ${weak.length ? weak.join(", ") : "Keep challenging yourself with higher-level questions."}
                         </p>
                     </div>
-
                     ${skills.map(s => {
                         const pct = Math.round(s.score * 100);
                         const good = s.score >= 0.7;
-
                         return `
                         <div class="p-4 rounded-2xl border ${good ? "bg-green-50 border-green-100" : "bg-indigo-50 border-indigo-100"}">
                             <div class="flex justify-between items-center mb-1">
                                 <span class="text-xs font-black uppercase">${s.name}</span>
                                 <span class="font-bold">${pct}%</span>
                             </div>
-                            <div class="w-full bg-gray-200 h-2.5 rounded-full overflow-hidden mb-2">
+                            <div class="w-full bg-gray-200 h-2 rounded-full overflow-hidden mb-2">
                                 <div class="h-full ${good ? "bg-green-500" : "bg-indigo-500"}" style="width:${pct}%"></div>
                             </div>
-                            <p class="text-sm">${good ? s.strength : s.improve}</p>
+                            <p class="text-xs">${good ? s.strength : s.improve}</p>
                         </div>`;
                     }).join("")}
-
-                </div>
-            `;
-
+                </div>`;
             els.analysisModal?.classList.remove("hidden");
         };
-    }, 0);
+    }
 }
 
 /* -----------------------------------
    REVIEW MY MISTAKES
 ----------------------------------- */
 export function renderAllQuestionsForReview(qs, ua) {
-    initializeElements();
+    if (!isInit) initializeElements();
     if (!els.reviewContainer) return;
 
-    els.reviewContainer.innerHTML = "";
     els.reviewContainer.classList.remove("hidden");
 
-    els.reviewContainer.innerHTML = `
+    const header = `
         <div class="mb-10 text-center">
-            <h3 class="text-3xl font-black">The Learning Map</h3>
-            <p class="italic text-sm">Understanding grows by comparison.</p>
-        </div>
+            <h3 class="text-3xl font-black text-slate-900">The Learning Map</h3>
+            <p class="italic text-sm text-slate-500">Understanding grows by comparison.</p>
+        </div>`;
 
-        ${qs.map((q, i) => {
-            const userAns = ua[q.id];
-            const correctAns = q.correct_answer;
-            const isCorrect = userAns === correctAns;
-            const isAR = q.question_type.toLowerCase().includes("ar");
-            const getText = k => isAR ? AR_LABELS[k] : q.options[k];
+    const questions = qs.map((q, i) => {
+        const userAns = ua[q.id];
+        const correctAns = q.correct_answer;
+        const isCorrect = userAns === correctAns;
+        const isAR = q.question_type.toLowerCase().includes("ar");
+        const getText = k => isAR ? AR_LABELS[k] : (q.options ? q.options[k] : "N/A");
 
-            return `
-            <div class="p-6 bg-white rounded-2xl border mb-6 relative">
-                <div class="absolute top-0 right-0 px-3 py-1 text-xs font-black text-white ${isCorrect ? "bg-green-500" : "bg-amber-400"}">
+        return `
+            <div class="p-6 bg-white rounded-2xl border mb-6 relative shadow-sm">
+                <div class="absolute top-0 right-0 px-3 py-1 text-[10px] font-black text-white uppercase tracking-tighter ${isCorrect ? "bg-green-500" : "bg-amber-400"}">
                     ${isCorrect ? "Mastered" : "Growing"}
                 </div>
-
-                <p class="font-bold mb-4">Q${i + 1}. ${cleanKatexMarkers(q.text)}</p>
-
-                <div class="grid md:grid-cols-2 gap-4">
-                    <div class="p-3 bg-slate-50 rounded-xl">
-                        <span class="text-xs font-black">Your Thought</span>
-                        <p class="text-sm">${userAns ? getText(userAns) : "Skipped"}</p>
+                <p class="font-bold mb-4 text-sm md:text-base">Q${i + 1}. ${cleanKatexMarkers(q.text)}</p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div class="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                        <span class="text-[10px] font-black uppercase text-slate-400">Your Thought</span>
+                        <p class="text-xs md:text-sm font-medium">${userAns ? cleanKatexMarkers(getText(userAns)) : "Skipped"}</p>
                     </div>
-                    <div class="p-3 bg-indigo-50 rounded-xl">
-                        <span class="text-xs font-black">The Golden Key</span>
-                        <p class="text-sm">${getText(correctAns)}</p>
+                    <div class="p-3 bg-indigo-50 rounded-xl border border-indigo-100">
+                        <span class="text-[10px] font-black uppercase text-indigo-400">The Golden Key</span>
+                        <p class="text-xs md:text-sm font-bold text-indigo-900">${cleanKatexMarkers(getText(correctAns))}</p>
                     </div>
                 </div>
             </div>`;
-        }).join("")}
-    `;
+    }).join("");
 
+    els.reviewContainer.innerHTML = header + questions;
     els.reviewContainer.scrollIntoView({ behavior: "smooth" });
 }
 
 /* -----------------------------------
    UI HELPERS
 ----------------------------------- */
-export function hideStatus(){ els.status?.classList.add("hidden"); }
-export function updateHeader(t,d){ els.header.textContent=t; els.diff.textContent=`Difficulty: ${d}`; }
-export function showView(v){
-    [els.quiz,els.results,els.paywall].forEach(x=>x?.classList.add("hidden"));
-    (v==="quiz-content"?els.quiz:v==="results-screen"?els.results:els.paywall)?.classList.remove("hidden");
+export function hideStatus() { els.status?.classList.add("hidden"); }
+export function updateHeader(t, d) { if(els.header) els.header.textContent = t; if(els.diff) els.diff.textContent = `Difficulty: ${d}`; }
+export function showView(v) {
+    [els.quiz, els.results, els.paywall].forEach(x => x?.classList.add("hidden"));
+    const target = v === "quiz-content" ? els.quiz : v === "results-screen" ? els.results : els.paywall;
+    target?.classList.remove("hidden");
 }
-export function showStatus(m,c=""){ els.status.textContent=m; els.status.className=c; els.status.classList.remove("hidden"); }
-export function updateNavigation(i,t,s){
-    els.prev?.classList.toggle("hidden",i===0);
-    els.next?.classList.toggle("hidden",i===t-1);
-    els.submit?.classList.toggle("hidden",s||i!==t-1);
-    els.counter.textContent=`${i+1}/${t}`;
+export function showStatus(m, c = "") {
+    if (!els.status) return;
+    els.status.textContent = m;
+    els.status.className = c;
+    els.status.classList.remove("hidden");
 }
-export function attachAnswerListeners(fn){
-    els.list.onchange=e=>{
-        if(e.target.type==="radio") fn(e.target.name.slice(2),e.target.value);
+export function updateNavigation(i, t, s) {
+    els.prev?.classList.toggle("hidden", i === 0);
+    els.next?.classList.toggle("hidden", i === t - 1);
+    els.submit?.classList.toggle("hidden", s || i !== t - 1);
+    if (els.counter) els.counter.textContent = `${i + 1}/${t}`;
+}
+export function attachAnswerListeners(fn) {
+    els.list.onclick = e => {
+        const radio = e.target.closest('input[type="radio"]');
+        if (radio) fn(radio.dataset.id, radio.value);
     };
 }
-export function updateAuthUI(u){
-    if(u && els.welcomeUser){
-        els.welcomeUser.textContent=`Welcome, ${u.email.split("@")[0]}`;
+export function updateAuthUI(u) {
+    if (u && els.welcomeUser) {
+        els.welcomeUser.textContent = `Welcome, ${u.email.split("@")[0]}`;
         els.welcomeUser.classList.remove("hidden");
     }
 }

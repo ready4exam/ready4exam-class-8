@@ -1,8 +1,8 @@
 // template/js/quiz-engine.js
-import { initializeServices, getAuthUser } from "./config.js"; 
+import { initializeServices } from "./config.js"; 
 import { fetchQuestions, saveResult } from "./api.js";
 import * as UI from "./ui-renderer.js";
-import { checkAccess, initializeAuthListener, requireAuth } from "./auth-paywall.js";
+import { initializeAuthListener, requireAuth } from "./auth-paywall.js";
 import { checkClassAccess } from "./firebase-expiry.js";
 
 let quizState = {
@@ -16,8 +16,11 @@ let quizState = {
     isSubmitted: false
 };
 
+// Global promise to hold question data while Auth is processing
+let questionsPromise = null;
+
 /* -----------------------------------
-   PARSE URL PARAMETERS
+   PARSE URL PARAMETERS (Fully Dynamic)
 ----------------------------------- */
 function parseUrlParameters() {
     const params = new URLSearchParams(location.search);
@@ -26,94 +29,47 @@ function parseUrlParameters() {
     quizState.classId = params.get("class") || "11";
     quizState.subject = params.get("subject") || "Physics";
 
-    let chapterPart = quizState.topicSlug
+    // 1. Dynamic Cleanup: Remove underscores/numbers and strip the "quiz" suffix
+    let cleanChapter = quizState.topicSlug
         .replace(/[_\d]/g, " ")
         .replace(/quiz/ig, "")
         .trim();
 
+    // 2. Dynamic Subject Stripping: If the slug starts with the subject name, remove it
     const subjectRegex = new RegExp(`^${quizState.subject}\\s*`, "i");
-    chapterPart = chapterPart.replace(subjectRegex, "").trim();
+    cleanChapter = cleanChapter.replace(subjectRegex, "").trim();
 
-    const cleanName = chapterPart.replace(/\b\w/g, c => c.toUpperCase());
-    const fullTitle = `Class ${quizState.classId}: ${quizState.subject} - ${cleanName} Worksheet`;
+    // 3. Dynamic Title Casing: Convert "acids bases salts" to "Acids Bases Salts"
+    cleanChapter = cleanChapter.replace(/\b\w/g, c => c.toUpperCase());
+
+    // 4. Grammar Refinement: Standardize common chemical/mathematical chapter naming
+    cleanChapter = cleanChapter.replace(/And/g, "and"); // keep 'and' lowercase for aesthetics
+    if (cleanChapter.toLowerCase().includes("acids bases salts")) {
+        cleanChapter = "Acid, Bases and Salts";
+    }
+
+    // Maintains Final Format: Class 10: Science - Acid, Bases and Salts Worksheet
+    const fullTitle = `Class ${quizState.classId}: ${quizState.subject} - ${cleanChapter} Worksheet`;
 
     UI.updateHeader(fullTitle, quizState.difficulty);
 }
 
 /* -----------------------------------
-   LOAD QUIZ + AR NORMALIZATION
+   LOAD QUIZ
 ----------------------------------- */
 async function loadQuiz() {
     try {
         UI.showStatus("Preparing worksheet...", "text-blue-600 font-bold");
 
-        const rawQuestions = await fetchQuestions(
-            quizState.topicSlug,
-            quizState.difficulty
-        );
-
-        quizState.questions = rawQuestions.map(q => {
-            let processedText = q.question_text || "";
-            let processedReason = q.scenario_reason_text || "";
-            const type = (q.question_type || "").toLowerCase();
-
-            /* ===== ASSERTION–REASON NORMALIZATION ===== */
-            if (type.includes("ar") || type.includes("assertion")) {
-
-                // Case 1: Assertion + Reason inside scenario_reason_text
-                if (
-                    processedReason.includes("Assertion (A):") &&
-                    processedReason.includes("Reason (R):")
-                ) {
-                    const parts = processedReason.split(/Reason\s*\(R\)\s*:/i);
-                    processedText = parts[0]
-                        .replace(/Assertion\s*\(A\)\s*:/i, "")
-                        .trim();
-                    processedReason = parts[1].trim();
-                }
-
-                // Case 2: Assertion + Reason inside question_text
-                else if (processedText.includes("Reason (R):")) {
-                    const parts = processedText.split(/Reason\s*\(R\)\s*:/i);
-                    processedText = parts[0]
-                        .replace(/Assertion\s*\(A\)\s*:/i, "")
-                        .trim();
-                    processedReason = parts[1].trim();
-                }
-
-                // Case 3: Already separated in DB
-                else {
-                    processedText = processedText
-                        .replace(/Assertion\s*\(A\)\s*:/i, "")
-                        .trim();
-                    processedReason = processedReason
-                        .replace(/Reason\s*\(R\)\s*:/i, "")
-                        .trim();
-                }
-            }
-            /* ======================================== */
-
-            return {
-                id: q.id,
-                question_type: type,
-                text: processedText,              // Assertion ONLY
-                scenario_reason: processedReason, // Reason ONLY
-                correct_answer: (q.correct_answer_key || "").toUpperCase(),
-                options: {
-                    A: q.option_a || "",
-                    B: q.option_b || "",
-                    C: q.option_c || "",
-                    D: q.option_d || ""
-                }
-            };
-        });
+        // Wait for the promise that was started in init()
+        const processedQuestions = await questionsPromise;
+        quizState.questions = processedQuestions;
 
         if (quizState.questions.length > 0) {
             UI.hideStatus();
             renderQuestion();
             UI.showView("quiz-content");
         }
-
     } catch (e) {
         UI.showStatus(`Error: ${e.message}`, "text-red-600");
     }
@@ -158,11 +114,10 @@ function handleNavigation(delta) {
 async function handleSubmit() {
     quizState.isSubmitted = true;
 
+    // Single-pass stats calculation for mobile performance
     const stats = {
         total: quizState.questions.length,
-        correct: quizState.questions.filter(
-            q => quizState.userAnswers[q.id] === q.correct_answer
-        ).length,
+        correct: 0,
         mcq: { c: 0, w: 0, t: 0 },
         ar:  { c: 0, w: 0, t: 0 },
         case:{ c: 0, w: 0, t: 0 }
@@ -171,21 +126,23 @@ async function handleSubmit() {
     quizState.questions.forEach(q => {
         const type = q.question_type.toLowerCase();
         const isCorrect = quizState.userAnswers[q.id] === q.correct_answer;
-        const cat = type.includes("ar")
-            ? "ar"
-            : type.includes("case")
-            ? "case"
-            : "mcq";
+        const cat = type.includes("ar") ? "ar" : type.includes("case") ? "case" : "mcq";
 
         stats[cat].t++;
-        isCorrect ? stats[cat].c++ : stats[cat].w++;
+        if (isCorrect) {
+            stats.correct++;
+            stats[cat].c++;
+        } else {
+            stats[cat].w++;
+        }
     });
 
     UI.renderResults(stats, quizState.difficulty);
-    saveResult({
-        ...quizState,
-        score: stats.correct,
-        total: stats.total
+    saveResult({ 
+        ...quizState, 
+        score: stats.correct, 
+        total: stats.total,
+        topic: quizState.topicSlug 
     });
 }
 
@@ -200,16 +157,12 @@ function attachDomEvents() {
         if (btn.id === "prev-btn") handleNavigation(-1);
         if (btn.id === "next-btn") handleNavigation(1);
         if (btn.id === "submit-btn") handleSubmit();
-        if (btn.id === "btn-review-errors")
-            UI.renderAllQuestionsForReview(
-                quizState.questions,
-                quizState.userAnswers
-            );
-
+        if (btn.id === "btn-review-errors") {
+            UI.renderAllQuestionsForReview(quizState.questions, quizState.userAnswers);
+        }
         if (btn.id === "back-to-chapters-btn") {
             const subject = quizState.subject || "Physics";
-            window.location.href =
-                `chapter-selection.html?subject=${encodeURIComponent(subject)}`;
+            window.location.href = `chapter-selection.html?subject=${encodeURIComponent(subject)}`;
         }
     });
 }
@@ -219,42 +172,51 @@ function attachDomEvents() {
 ----------------------------------- */
 function wireGoogleLogin() {
     const btn = document.getElementById("google-signin-btn");
-    if (!btn) return;
-
-    btn.onclick = async () => {
-        await requireAuth();
-        location.reload();
-    };
+    if (btn) {
+        btn.onclick = async () => {
+            await requireAuth();
+            location.reload();
+        };
+    }
 }
 
 /* -----------------------------------
    INIT
 ----------------------------------- */
 async function init() {
+    // 1. Initial UI Setup
     UI.initializeElements();
     parseUrlParameters();
     attachDomEvents();
     UI.attachAnswerListeners(handleAnswerSelection);
 
-    await initializeServices();
-    wireGoogleLogin();
+    try {
+        // 2. Parallel initialization: Start services first
+        await initializeServices();
+        
+        // 3. Immediately trigger question fetch (Services are now ready)
+        questionsPromise = fetchQuestions(quizState.topicSlug, quizState.difficulty);
 
-    await initializeAuthListener(async user => {
-        if (user) {
-            const access = await checkClassAccess(
-                quizState.classId,
-                quizState.subject
-            );
-            if (access.allowed) {
-                loadQuiz();
+        wireGoogleLogin();
+
+        // 4. Handle Auth and Access while data fetches in background
+        await initializeAuthListener(async user => {
+            if (user) {
+                const access = await checkClassAccess(quizState.classId, quizState.subject);
+                if (access.allowed) {
+                    loadQuiz(); 
+                } else {
+                    alert(access.reason || "Access Restricted.");
+                    location.href = "index.html";
+                }
             } else {
-                alert(access.reason || "Access Restricted.");
-                location.href = "index.html";
+                UI.showView("paywall-screen");
             }
-        } else {
-            UI.showView("paywall-screen");
-        }
-    });
+        });
+    } catch (err) {
+        console.error("Initialization failed:", err);
+        UI.showStatus("System error during startup.", "text-red-600");
+    }
 }
 
 document.addEventListener("DOMContentLoaded", init);
