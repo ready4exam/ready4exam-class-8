@@ -1,13 +1,10 @@
-// js/auth-paywall.js
-// -------------------------------------------------------
-// Firebase Login Paywall (SAFE MINIMAL PATCH)
-// -------------------------------------------------------
+/**
+ * template/js/auth-paywall.js
+ * FINAL FIX: Mandatory Google Auth with browser-safe popup enforcement
+ * Rule: Google popup is triggered ONLY from a user gesture.
+ */
 
-import {
-  initializeServices,
-  getInitializedClients
-} from "./config.js";
-
+import { initializeServices, getInitializedClients } from "./config.js";
 import {
   GoogleAuthProvider,
   signInWithPopup,
@@ -16,217 +13,112 @@ import {
   browserLocalPersistence,
   signOut as firebaseSignOut
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-
 import {
-  getFirestore,
   doc,
+  setDoc,
   getDoc,
-  runTransaction,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
 const LOG = "[AUTH]";
-let externalCallback = null;
-
-// Admin emails
 const ADMIN_EMAILS = ["keshav.karn@gmail.com", "ready4urexam@gmail.com"];
 
 const provider = new GoogleAuthProvider();
 provider.setCustomParameters({ prompt: "select_account" });
 
-/* ----------------------------------------
-   DOM HELPERS
----------------------------------------- */
-function findPaywall() {
-  return (
-    document.querySelector("#paywall-screen") ||
-    document.querySelector("#auth-container") ||
-    document.querySelector("#signin-card") ||
-    document.querySelector(".auth-box") ||
-    document.querySelector("#paywall") ||
-    document.querySelector(".paywall")
-  );
-}
-function findLoading() {
-  return (
-    document.querySelector("#auth-loading") ||
-    document.querySelector(".auth-loading")
-  );
-}
-function hidePaywall() { const pw = findPaywall(); if (pw) pw.style.display = "none"; }
-function showPaywall() { const pw = findPaywall(); if (pw) pw.style.display = "block"; }
-function showAuthLoading(msg = "Loading…") {
-  const el = findLoading();
-  if (el) { el.textContent = msg; el.style.display = "block"; }
-}
-function hideAuthLoading() {
-  const el = findLoading();
-  if (el) el.style.display = "none";
-}
-
-/* -------------------------------------------------------
-   SAFE: Ensure Firestore user doc exists
-------------------------------------------------------- */
+/* ============================================================================
+   BACKGROUND USER SYNC (NON-BLOCKING)
+   ============================================================================ */
 export async function ensureUserInFirestore(user) {
-  if (!user || !user.uid) return null;
+  if (!user?.uid) return;
+
+  const { db } = getInitializedClients();
+  const ref = doc(db, "users", user.uid);
 
   try {
-    const db = getFirestore();
-    const ref = doc(db, `users/${user.uid}`);
-
-    const result = await runTransaction(db, async tx => {
-      const snap = await tx.get(ref);
-
+    const snap = await getDoc(ref);
+    if (!snap.exists()) {
       const emailLower = (user.email || "").toLowerCase();
       const isAdmin = ADMIN_EMAILS.includes(emailLower);
 
-      if (!snap.exists()) {
-        const newDoc = {
-          uid: user.uid,
-          email: user.email || null,
-          displayName: user.displayName || null,
-          paidClasses: [],
-          streams: [],
-          role: isAdmin ? "admin" : "student",
-          signupDate: serverTimestamp()
-        };
-        tx.set(ref, newDoc, { merge: true });
-        return newDoc;
-      }
-
-      const data = snap.data();
-      const updates = {};
-      let changed = false;
-
-      if (!Array.isArray(data.paidClasses)) {
-        updates.paidClasses = [];
-        changed = true;
-      }
-      if (!Array.isArray(data.streams)) {
-        updates.streams = [];
-        changed = true;
-      }
-
-      if (!data.role) {
-        updates.role = isAdmin ? "admin" : "student";
-        changed = true;
-      } else if (isAdmin && data.role !== "admin") {
-        updates.role = "admin";
-        changed = true;
-      }
-
-      if (user.email && data.email !== user.email) {
-        updates.email = user.email;
-        changed = true;
-      }
-
-      if (user.displayName && data.displayName !== user.displayName) {
-        updates.displayName = user.displayName;
-        changed = true;
-      }
-
-      if (changed) tx.set(ref, updates, { merge: true });
-
-      return { ...data, ...updates };
-    });
-
-    window.authPaywall = window.authPaywall || {};
-    window.authPaywall.userDoc = result;
-
-    return result;
-
+      await setDoc(ref, {
+        uid: user.uid,
+        email: user.email,
+        displayName: user.displayName,
+        paidClasses: {
+          "6": false, "7": false, "8": false,
+          "9": false, "10": false, "11": false, "12": false
+        },
+        streams: "",
+        role: isAdmin ? "admin" : "student",
+        signupDate: serverTimestamp()
+      });
+    }
   } catch (e) {
-    console.warn(LOG, "ensureUserInFirestore failed", e);
-    return null; // Never break login flow
+    console.warn(LOG, "Firestore sync deferred.", e);
   }
 }
 
-// expose globally
-window.authPaywall = window.authPaywall || {};
-window.authPaywall.ensureUserInFirestore = ensureUserInFirestore;
-
-/* -------------------------------------------------------
-   AUTH LISTENER
-------------------------------------------------------- */
-export async function initializeAuthListener(callback = null) {
+/* ============================================================================
+   AUTH STATE LISTENER (PASSIVE ONLY — NO POPUPS HERE)
+   ============================================================================ */
+export async function initializeAuthListener(onReady) {
   await initializeServices();
   const { auth } = getInitializedClients();
 
-  window.auth = auth;
-  if (callback) externalCallback = callback;
+  await setPersistence(auth, browserLocalPersistence).catch(() => {});
 
-  try { await setPersistence(auth, browserLocalPersistence); }
-  catch (e) { console.warn(LOG, "Persistence skipped", e); }
-
-  onAuthStateChanged(auth, async (user) => {
-    console.log(LOG, "State →", user?.email || "Signed OUT");
+  onAuthStateChanged(auth, (user) => {
+    console.log(LOG, "State →", user ? user.email : "Signed OUT");
 
     if (user) {
-      try { await ensureUserInFirestore(user); } catch {}
-
-      hidePaywall();
-      hideAuthLoading();
-
-      if (externalCallback) {
-        try { externalCallback(user); } catch {}
-      }
-      return;
+      ensureUserInFirestore(user);
     }
 
-    showPaywall();
-    showAuthLoading("Please sign in to continue");
-
-    if (externalCallback) {
-      try { externalCallback(null); } catch {}
-    }
+    if (onReady) onReady(user);
   });
-
-  console.log(LOG, "Auth listener ready.");
 }
 
-/* -------------------------------------------------------
-   SIGN-IN
-------------------------------------------------------- */
-export async function signInWithGoogle() {
+/* ============================================================================
+   HARD AUTH GATE — MUST BE CALLED FROM A USER CLICK
+   ============================================================================ */
+export async function requireAuth() {
   await initializeServices();
   const { auth } = getInitializedClients();
 
-  showAuthLoading("Opening Google Login…");
+  if (auth.currentUser) {
+    return auth.currentUser;
+  }
 
   try {
-    const result = await signInWithPopup(auth, provider);
-    try { await ensureUserInFirestore(result.user); } catch {}
-    hideAuthLoading();
-    hidePaywall();
-    return result.user;
+    const res = await signInWithPopup(auth, provider);
+    ensureUserInFirestore(res.user);
+    return res.user;
   } catch (e) {
-    console.error(LOG, "Popup error:", e);
-    hideAuthLoading();
-    return null;
+    console.error(LOG, "Login failed:", e.code, e.message);
+
+    if (e.code === "auth/popup-blocked") {
+      alert("Please allow pop-ups to continue.");
+    } else {
+      alert("Google login failed. Please try again.");
+    }
+    throw e;
   }
 }
 
-/* -------------------------------------------------------
-   SIGN OUT
-------------------------------------------------------- */
-export async function signOut() {
-  await initializeServices();
+/* ============================================================================
+   OPTIONAL HELPERS
+   ============================================================================ */
+export const signOut = async () => {
   const { auth } = getInitializedClients();
-
-  showPaywall();
-  showAuthLoading("Signing out…");
-
   return firebaseSignOut(auth);
-}
+};
 
-/* -------------------------------------------------------
-   checkAccess (unchanged)
-------------------------------------------------------- */
-export function checkAccess() {
+export const checkAccess = () => {
   try {
     const { auth } = getInitializedClients();
     return !!auth.currentUser;
   } catch {
     return false;
   }
-}
+};
