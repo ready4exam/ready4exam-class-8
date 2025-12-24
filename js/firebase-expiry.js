@@ -4,23 +4,15 @@ import {
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
 /**
- * Checks if a user's manual expiry date has passed.
- * Default is false (not expired) to allow the "Silent Trial".
+ * Logic: Returns true ONLY if a manual expiry date exists and has passed.
+ * The 15-day trial is SILENT (non-blocking).
  */
 export function isSignupExpired(userData) {
   if (userData.accessExpiryDate) {
     const expiryDate = new Date(userData.accessExpiryDate);
     return Date.now() >= expiryDate.getTime();
   }
-  
-  // Logic for 15-day silent trial if no manual date is set
-  if (userData.signupDate) {
-    const signup = userData.signupDate.toDate ? userData.signupDate.toDate() : new Date(userData.signupDate);
-    const fifteenDaysInMs = 15 * 24 * 60 * 60 * 1000;
-    // Returns true only if 15 days have passed AND no manual toggle is enabled
-    return (Date.now() - signup.getTime()) > fifteenDaysInMs;
-  }
-  
+  // Silent trial: We do not return true for 15-day check here to avoid hard-blocking.
   return false; 
 }
 
@@ -62,63 +54,95 @@ export async function ensureUserDocExists() {
 }
 
 /**
- * UI Component for blocked access.
+ * UI Component for the Premium "Exclusive Member" Blocked Access.
  */
-export function showExpiredPopup(message = "Access Restricted") {
+export function showExpiredPopup(message) {
   if (document.getElementById("r4e-expired-modal")) return;
+
   const wrap = document.createElement("div");
   wrap.id = "r4e-expired-modal";
-  wrap.className = "fixed inset-0 flex items-center justify-center bg-black/60 z-[9999] backdrop-blur-sm";
+  wrap.className = "fixed inset-0 flex items-center justify-center bg-slate-900/60 z-[9999] backdrop-blur-md px-4";
+  
   wrap.innerHTML = `
-    <div class="bg-white p-8 rounded-3xl max-w-sm w-full text-center shadow-2xl mx-4">
-      <div class="text-red-500 mb-4">
-        <svg class="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m0-8v6m-5.221 2h10.442c.566 0 1.02-.454 1.02-1.02V7.02c0-.566-.454-1.02-1.02-1.02H6.779c-.566 0-1.02.454-1.02 1.02v9.96c0 .566.454 1.02 1.02 1.02z"/>
-        </svg>
+    <div class="bg-white p-8 rounded-[2.5rem] max-w-sm w-full text-center shadow-2xl border-t-8 border-[#ffb703]">
+      <div class="w-20 h-20 bg-yellow-50 rounded-full flex items-center justify-center mx-auto mb-6">
+        <span class="text-3xl">🎓</span>
       </div>
-      <h2 class="text-xl font-black text-slate-900 mb-2">Access Restricted</h2>
-      <p class="text-slate-500 text-sm font-medium leading-relaxed">${message}</p>
-      <button onclick="location.href='index.html'" class="mt-6 w-full bg-slate-900 text-white py-3 rounded-2xl font-bold">Back to Home</button>
+      <h2 class="text-2xl font-black text-[#1a3e6a] mb-3">Scholar Status</h2>
+      <div class="bg-slate-50 rounded-2xl p-4 mb-6 border border-slate-100">
+         <p class="text-slate-600 text-sm font-semibold leading-relaxed">
+           ${message}
+         </p>
+      </div>
+      <div class="space-y-3">
+        <button onclick="window.open('https://wa.me/YOUR_NUMBER', '_blank')" 
+                class="w-full bg-[#1a3e6a] text-white py-4 rounded-2xl font-bold text-lg hover:bg-blue-800 transition-all active:scale-95">
+          Upgrade Portfolio
+        </button>
+        <button onclick="location.href='index.html'" 
+                class="w-full py-2 text-slate-400 font-bold hover:text-[#1a3e6a] transition">
+          Back to Dashboard
+        </button>
+      </div>
     </div>`;
   document.body.appendChild(wrap);
 }
 
 /**
- * Core Logic: Determines if the authenticated user can view the specific quiz.
+ * Core Logic: Controls access based on Class-Lock and Manual Expiry.
+ * Ensures the first class clicked is "Ticked Green" in the Admin Portal.
  */
 export async function checkClassAccess(classId, stream) {
   await initializeServices();
   const { auth, db } = getInitializedClients();
   const user = auth.currentUser;
   
-  if (!user) return { allowed: false, reason: "Please sign in with Google." };
+  // 1. Force Authentication
+  if (!user) return { allowed: false, reason: "Please sign in to continue." };
 
-  const snap = await getDoc(doc(db, "users", user.uid));
+  const userRef = doc(db, "users", user.uid);
+  const snap = await getDoc(userRef);
   
-  // New users (not yet in DB) get immediate access under Silent Trial
-  if (!snap.exists()) return { allowed: true }; 
+  // Handle case where user exists in Auth but not yet in Firestore
+  if (!snap.exists()) return { allowed: true };
   
   const data = snap.data();
 
-  // Admin Bypass: Hardcoded admins have 100% access
-  if (data.role === "admin") return { allowed: true }; 
+  // 2. Admin Bypass: Admins have 100% access to all classes
+  if (data.role === "admin") return { allowed: true };
 
-  // Check 1: Manual Expiry Date from Admin Portal
-  if (data.accessExpiryDate && new Date() >= new Date(data.accessExpiryDate)) {
-    return { allowed: false, reason: "Your access has been manually restricted by an Admin." };
+  // 3. Identify currently "Green" (Active) classes
+  const activeClasses = Object.keys(data.paidClasses || {}).filter(
+    (key) => data.paidClasses[key] === true
+  );
+
+  // 4. AUTO-LOCK LOGIC: 
+  // If no class is ticked green yet, lock this specific class immediately.
+  if (activeClasses.length === 0) {
+    await updateDoc(userRef, {
+      [`paidClasses.${classId}`]: true
+    });
+    // Return allowed so the first quiz can start immediately
+    return { allowed: true };
   }
 
-  // Check 2: Class Toggle (Active if Green in Portal, otherwise check Trial)
-  const isClassEnabled = data.paidClasses?.[classId];
-  
-  // If Admin has NOT manually enabled the class, check if 15-day trial is still active
-  if (!isClassEnabled && isSignupExpired(data)) {
-      return { allowed: false, reason: `Trial period for Class ${classId} has ended. Please contact Admin.` };
+  // 5. BLOCKING LOGIC: 
+  // If they have a green class, but it IS NOT the one in the current URL/Slug
+  if (!data.paidClasses[classId]) {
+    const primaryClass = activeClasses[0]; 
+    return { 
+      allowed: false, 
+      reason: `You are currently an **Exclusive Member** of our Class ${primaryClass} Learning Program! To expand your academic portfolio to Class ${classId}, let's get you upgraded.` 
+    };
   }
 
-  // Check 3: Senior Stream Validation (Class 11 & 12 only)
-  if ((classId === "11" || classId === "12") && stream && data.streams && data.streams !== stream) {
-      return { allowed: false, reason: `Authorized for ${data.streams} only. This is a ${stream} worksheet.` };
+  // 6. MANUAL EXPIRY CHECK: 
+  // Only blocks if you manually set an 'accessExpiryDate' in the Admin Portal.
+  if (isSignupExpired(data)) {
+    return { 
+      allowed: false, 
+      reason: "Your personalized access period has concluded. Please contact your mentor to renew your scholarship." 
+    };
   }
 
   return { allowed: true };

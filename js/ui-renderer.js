@@ -260,9 +260,28 @@ export function attachAnswerListeners(fn) {
         if (radio) fn(radio.dataset.id, radio.value);
     };
 }
+
+/* -----------------------------------
+   IDENTITY & ACCESS UI HELPERS
+----------------------------------- */
 export function updateAuthUI(u) {
+    if (!isInit) initializeElements();
     if (u && els.welcomeUser) {
-        els.welcomeUser.textContent = `Welcome, ${u.email.split("@")[0]}`;
+        // Displays "Student: [Name]" using the Google Display Name
+        const name = u.displayName || u.email.split("@")[0];
+        els.welcomeUser.textContent = `Student: ${name}`;
         els.welcomeUser.classList.remove("hidden");
+    }
+}
+
+export function showPaywallLoading(isLoading = true) {
+    const btn = document.getElementById("google-signin-btn");
+    if (!btn) return;
+    if (isLoading) {
+        btn.innerHTML = `<span class="animate-pulse">Verifying Account...</span>`;
+        btn.disabled = true;
+    } else {
+        btn.innerHTML = `Continue with Google`;
+        btn.disabled = false;
     }
 }

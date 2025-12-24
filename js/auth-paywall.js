@@ -92,9 +92,12 @@ export async function requireAuth() {
 
   try {
     const res = await signInWithPopup(auth, provider);
-    ensureUserInFirestore(res.user);
+    // This ensures the user is saved to Firestore immediately after popup closes
+    await ensureUserInFirestore(res.user); 
     return res.user;
-  } catch (e) {
+  } 
+  
+  catch (e) {
     console.error(LOG, "Login failed:", e.code, e.message);
 
     if (e.code === "auth/popup-blocked") {
