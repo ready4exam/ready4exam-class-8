@@ -1,3 +1,4 @@
+// ✅ CORRECTED PATH: Imports from same folder using "./"
 import { initializeServices, getInitializedClients } from "./config.js";
 import { 
   doc, getDoc, setDoc, updateDoc, serverTimestamp 
@@ -5,14 +6,12 @@ import {
 
 /**
  * Logic: Returns true ONLY if a manual expiry date exists and has passed.
- * The 15-day trial is SILENT (non-blocking).
  */
 export function isSignupExpired(userData) {
   if (userData.accessExpiryDate) {
     const expiryDate = new Date(userData.accessExpiryDate);
     return Date.now() >= expiryDate.getTime();
   }
-  // Silent trial: We do not return true for 15-day check here to avoid hard-blocking.
   return false; 
 }
 
@@ -54,96 +53,113 @@ export async function ensureUserDocExists() {
 }
 
 /**
- * UI Component for the Premium "Exclusive Member" Blocked Access.
- */
-export function showExpiredPopup(message) {
-  if (document.getElementById("r4e-expired-modal")) return;
-
-  const wrap = document.createElement("div");
-  wrap.id = "r4e-expired-modal";
-  wrap.className = "fixed inset-0 flex items-center justify-center bg-slate-900/60 z-[9999] backdrop-blur-md px-4";
-  
-  wrap.innerHTML = `
-    <div class="bg-white p-8 rounded-[2.5rem] max-w-sm w-full text-center shadow-2xl border-t-8 border-[#ffb703]">
-      <div class="w-20 h-20 bg-yellow-50 rounded-full flex items-center justify-center mx-auto mb-6">
-        <span class="text-3xl">🎓</span>
-      </div>
-      <h2 class="text-2xl font-black text-[#1a3e6a] mb-3">Scholar Status</h2>
-      <div class="bg-slate-50 rounded-2xl p-4 mb-6 border border-slate-100">
-         <p class="text-slate-600 text-sm font-semibold leading-relaxed">
-           ${message}
-         </p>
-      </div>
-      <div class="space-y-3">
-        <button onclick="window.open('https://wa.me/YOUR_NUMBER', '_blank')" 
-                class="w-full bg-[#1a3e6a] text-white py-4 rounded-2xl font-bold text-lg hover:bg-blue-800 transition-all active:scale-95">
-          Upgrade Portfolio
-        </button>
-        <button onclick="location.href='index.html'" 
-                class="w-full py-2 text-slate-400 font-bold hover:text-[#1a3e6a] transition">
-          Back to Dashboard
-        </button>
-      </div>
-    </div>`;
-  document.body.appendChild(wrap);
-}
-
-/**
  * Core Logic: Controls access based on Class-Lock and Manual Expiry.
- * Ensures the first class clicked is "Ticked Green" in the Admin Portal.
  */
 export async function checkClassAccess(classId, stream) {
   await initializeServices();
   const { auth, db } = getInitializedClients();
   const user = auth.currentUser;
   
-  // 1. Force Authentication
   if (!user) return { allowed: false, reason: "Please sign in to continue." };
 
   const userRef = doc(db, "users", user.uid);
   const snap = await getDoc(userRef);
   
-  // Handle case where user exists in Auth but not yet in Firestore
   if (!snap.exists()) return { allowed: true };
   
   const data = snap.data();
 
-  // 2. Admin Bypass: Admins have 100% access to all classes
+  // 1. Admin Bypass
   if (data.role === "admin") return { allowed: true };
+
+  // 2. PRIORITY CHECK: Manual Expiry
+  // 🔥 CRITICAL: Must be checked BEFORE Auto-Lock to stop revoked users.
+  if (isSignupExpired(data)) {
+    return { 
+      allowed: false, 
+      reason: "Your evaluation period has concluded. Please contact us to upgrade your portfolio." 
+    };
+  }
 
   // 3. Identify currently "Green" (Active) classes
   const activeClasses = Object.keys(data.paidClasses || {}).filter(
     (key) => data.paidClasses[key] === true
   );
 
-  // 4. AUTO-LOCK LOGIC: 
-  // If no class is ticked green yet, lock this specific class immediately.
+  // 4. AUTO-LOCK LOGIC (First Class Free for NEW users only)
+  // Reached only if user is NOT expired.
   if (activeClasses.length === 0) {
     await updateDoc(userRef, {
       [`paidClasses.${classId}`]: true
     });
-    // Return allowed so the first quiz can start immediately
     return { allowed: true };
   }
 
-  // 5. BLOCKING LOGIC: 
-  // If they have a green class, but it IS NOT the one in the current URL/Slug
+  // 5. BLOCKING LOGIC (Class Mismatch)
   if (!data.paidClasses[classId]) {
     const primaryClass = activeClasses[0]; 
     return { 
       allowed: false, 
-      reason: `You are currently an **Exclusive Member** of our Class ${primaryClass} Learning Program! To expand your academic portfolio to Class ${classId}, let's get you upgraded.` 
-    };
-  }
-
-  // 6. MANUAL EXPIRY CHECK: 
-  // Only blocks if you manually set an 'accessExpiryDate' in the Admin Portal.
-  if (isSignupExpired(data)) {
-    return { 
-      allowed: false, 
-      reason: "Your personalized access period has concluded. Please contact your mentor to renew your scholarship." 
+      reason: `You are currently an **Exclusive Member** of Class ${primaryClass}! Contact us to unlock Class ${classId}.` 
     };
   }
 
   return { allowed: true };
+}
+
+/* -------------------------------------------------------------------------- */
+/* FRIENDLY "EVALUATION COMPLETE" POPUP                                       */
+/* -------------------------------------------------------------------------- */
+
+export function showExpiredPopup(message) {
+  if (document.getElementById("r4e-expired-overlay")) return;
+
+  const overlay = document.createElement("div");
+  overlay.id = "r4e-expired-overlay";
+  overlay.className = "fixed inset-0 bg-slate-900/90 z-[9999] flex items-center justify-center p-4 backdrop-blur-sm animation-fade-in";
+  
+  const title = "Access Information";
+  const subTitle = "Ready4Exam Pilot Program";
+  
+  const bodyText = message || `
+    We hope you enjoyed experiencing the <strong>Ready4Exam</strong> platform. 
+    <br><br>
+    Your preview access has ended. To continue practicing without interruption, please reach out to our team.
+  `;
+
+  overlay.innerHTML = `
+    <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden transform scale-100 transition-all border border-slate-100">
+      
+      <div class="bg-[#1a3e6a] p-6 text-center relative overflow-hidden">
+        <div class="absolute top-0 left-0 w-full h-1 bg-[#ffb703]"></div>
+        <div class="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center mx-auto mb-3 backdrop-blur-md">
+           <span class="text-3xl">🌟</span>
+        </div>
+        <h2 class="text-2xl font-black text-white tracking-tight">${title}</h2>
+        <p class="text-blue-200 text-sm font-bold mt-1 tracking-wide uppercase">${subTitle}</p>
+      </div>
+
+      <div class="p-8 text-center">
+        <p class="text-slate-600 text-base leading-relaxed mb-8">${bodyText}</p>
+        
+        <div class="bg-slate-50 rounded-2xl p-5 border border-slate-100 mb-6">
+          <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Contact for Renewal</p>
+          
+          <a href="mailto:ready4urexam@gmail.com" class="flex items-center justify-center gap-2 text-[#1a3e6a] font-bold text-lg hover:underline">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+            ready4urexam@gmail.com
+          </a>
+          
+          <p class="text-slate-400 text-xs font-semibold mt-2">+91 98XXX XXXXX</p>
+        </div>
+
+        <button onclick="location.href='index.html'" class="w-full py-4 bg-[#ffb703] hover:bg-[#ffaa00] text-[#1a3e6a] font-black rounded-xl shadow-lg shadow-orange-100 transition-all active:scale-95 text-sm uppercase tracking-wider">
+          Back to Home
+        </button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+  document.body.style.overflow = 'hidden';
 }
