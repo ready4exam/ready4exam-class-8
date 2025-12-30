@@ -24,7 +24,7 @@ export async function checkClassAccess(classId, subject) {
 
         const data = snap.data();
         
-        // Admin Bypass
+        // Admin Bypass - Ensure your current email is included here
         const ADMIN_EMAILS = ["keshav.karn@gmail.com", "ready4urexam@gmail.com"];
         if (user.email && ADMIN_EMAILS.includes(user.email.toLowerCase())) {
             return { allowed: true };
@@ -45,11 +45,11 @@ export async function checkClassAccess(classId, subject) {
         } 
         else {
             try {
-                // Auto-lock new student to this class
-                await updateDoc(userRef, {
+                // OPTIMIZATION: Auto-lock as a non-blocking background task to remove UI lag
+                updateDoc(userRef, {
                     [`paidClasses.${classId}`]: true
-                });
-                console.log(`Auto-locked user to Class ${classId}`);
+                }).catch(err => console.error("Background auto-lock failed:", err));
+                
                 return { allowed: true };
             } catch (err) {
                 console.error("Auto-lock failed:", err);
@@ -76,7 +76,7 @@ let quizState = {
 let questionsPromise = null;
 
 /* -----------------------------------
-    2. HEADER & URL PARSING (Fixed)
+    2. HEADER & URL PARSING
 ----------------------------------- */
 function parseUrlParameters() {
     const params = new URLSearchParams(location.search);
@@ -86,33 +86,24 @@ function parseUrlParameters() {
     quizState.subject = params.get("subject") || "Physics";
     quizState.topicSlug = params.get("table") || params.get("topic") || "";
 
-    // A. TRY TO GET EXACT CHAPTER NAME FROM URL
     let displayChapter = params.get("chapter_name");
 
-    // B. FALLBACK: IF NO NAME IN URL, CLEAN THE ID
     if (!displayChapter) {
         displayChapter = quizState.topicSlug
-            .replace(/[_-]/g, " ") // Replace underscores/dashes with space
-            .replace(/quiz|worksheet/ig, "") // Remove 'quiz' to avoid "Set Set"
+            .replace(/[_-]/g, " ")
+            .replace(/quiz|worksheet/ig, "")
             .trim();
             
-        // Remove Subject if it's in the name (e.g. "Physics Motion" -> "Motion")
         const subjectRegex = new RegExp(`^${quizState.subject}\\s*`, "i");
         displayChapter = displayChapter.replace(subjectRegex, "").trim();
     } else {
-        // Decode URI (e.g., "Force%20and%20Motion" -> "Force and Motion")
         displayChapter = decodeURIComponent(displayChapter);
     }
 
-    // C. FORMATTING
-    // Title Case
     displayChapter = displayChapter.replace(/\b\w/g, c => c.toUpperCase());
-    // Fix "And" to "and"
     displayChapter = displayChapter.replace(/\bAnd\b/g, "and"); 
 
-    // D. SET HEADER: Class : Subject - Chapter Name Worksheet
     const fullTitle = `Class ${quizState.classId} : ${quizState.subject} - ${displayChapter} Worksheet`;
-    
     UI.updateHeader(fullTitle, quizState.difficulty);
 }
 
@@ -123,6 +114,7 @@ async function loadQuiz() {
     try {
         UI.showStatus("Preparing worksheet...", "text-blue-600 font-bold");
 
+        // loadQuiz awaits the promise started during init()
         const processedQuestions = await questionsPromise;
         quizState.questions = processedQuestions;
 
@@ -174,7 +166,6 @@ function handleNavigation(delta) {
 ----------------------------------- */
 async function handleSubmit() {
     quizState.isSubmitted = true;
-
     const stats = {
         total: quizState.questions.length,
         correct: 0,
@@ -238,27 +229,30 @@ function wireGoogleLogin() {
 }
 
 /* -----------------------------------
-    8. INITIALIZATION
+    8. INITIALIZATION (Fixed for Optimized Fetch)
 ----------------------------------- */
 async function init() {
     UI.initializeElements();
-    parseUrlParameters(); // Sets the Header
+    parseUrlParameters(); 
     attachDomEvents();
     UI.attachAnswerListeners(handleAnswerSelection);
 
     try {
-        await initializeServices();
+        // Step 1: Initialize services first to avoid configuration errors
+        await initializeServices(); 
+
+        // Step 2: Parallel fetch starts now that services are ready
+        questionsPromise = fetchQuestions(quizState.topicSlug, quizState.difficulty);
+
         wireGoogleLogin();
 
-        // Check Auth & Access
+        // Step 3: Verify identity and access
         await initializeAuthListener(async user => {
             if (user) {
                 UI.updateAuthUI(user);
-
                 const access = await checkClassAccess(quizState.classId, quizState.subject);
                 
                 if (access.allowed) {
-                    questionsPromise = fetchQuestions(quizState.topicSlug, quizState.difficulty);
                     await loadQuiz(); 
                 } else {
                     UI.hideStatus();
