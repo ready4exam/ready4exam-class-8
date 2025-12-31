@@ -96,7 +96,7 @@ export const curriculum = {
       },
       {
         "chapter_title": "From Trade to Territory",
-        "table_id": "",
+        "table_id": "social_from_territory_8_quiz",
         "section": "Social Science"
       },
       {
