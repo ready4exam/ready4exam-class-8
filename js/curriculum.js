@@ -111,7 +111,7 @@ export const curriculum = {
       },
       {
         "chapter_title": "When People Rebel",
-        "table_id": "",
+        "table_id": "social_when_rebel_8_quiz",
         "section": "Social Science"
       },
       {
