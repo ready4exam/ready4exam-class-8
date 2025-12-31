@@ -126,7 +126,7 @@ export const curriculum = {
       },
       {
         "chapter_title": "The Making of the National Movement: 1870s–1947",
-        "table_id": "",
+        "table_id": "social_making_1947_8_quiz",
         "section": "Social Science"
       }
     ],
