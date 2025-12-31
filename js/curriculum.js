@@ -101,7 +101,7 @@ export const curriculum = {
       },
       {
         "chapter_title": "Ruling the Countryside",
-        "table_id": "",
+        "table_id": "social_ruling_countryside_8_quiz",
         "section": "Social Science"
       },
       {
