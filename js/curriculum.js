@@ -116,7 +116,7 @@ export const curriculum = {
       },
       {
         "chapter_title": "Civilising the “Native”, Educating the Nation",
-        "table_id": "",
+        "table_id": "social_civilising_nation_8_quiz",
         "section": "Social Science"
       },
       {
