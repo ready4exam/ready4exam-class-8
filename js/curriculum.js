@@ -3,7 +3,7 @@ export const curriculum = {
     "Physics": [
       {
         "chapter_title": "Force and Pressure",
-        "table_id": "",
+        "table_id": "science_force_pressure_8_quiz",
         "section": "Science"
       },
       {
