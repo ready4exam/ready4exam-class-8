@@ -18,7 +18,7 @@ export const curriculum = {
       },
       {
         "chapter_title": "Chemical Effects of Electric Current",
-        "table_id": "",
+        "table_id": "science_chemical_current_8_quiz",
         "section": "Science"
       },
       {
