@@ -8,7 +8,7 @@ export const curriculum = {
       },
       {
         "chapter_title": "Friction",
-        "table_id": "",
+        "table_id": "science_friction_friction_8_quiz",
         "section": "Science"
       },
       {
