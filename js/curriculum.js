@@ -67,7 +67,7 @@ export const curriculum = {
       },
       {
         "chapter_title": "Conservation of Plants and Animals",
-        "table_id": "",
+        "table_id": "science_conservation_animals_8_quiz",
         "section": "Science"
       },
       {
