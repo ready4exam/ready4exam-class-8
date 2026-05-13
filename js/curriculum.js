@@ -50,7 +50,7 @@ export const curriculum = {
       },
       {
         "chapter_title": "Combustion and Flame",
-        "table_id": "",
+        "table_id": "science_combustion_flame_8_quiz",
         "section": "Science"
       }
     ],
