@@ -153,7 +153,7 @@ export const curriculum = {
       },
       {
         "chapter_title": "Understanding Marginalisation",
-        "table_id": "",
+        "table_id": "social_understanding_marginalisation_8_quiz",
         "section": "Social Science"
       },
       {
