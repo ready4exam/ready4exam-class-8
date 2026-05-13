@@ -77,7 +77,7 @@ export const curriculum = {
       },
       {
         "chapter_title": "Reaching the Age of Adolescence",
-        "table_id": "",
+        "table_id": "science_reaching_adolescence_8_quiz",
         "section": "Science"
       },
       {
