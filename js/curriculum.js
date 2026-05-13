@@ -35,7 +35,7 @@ export const curriculum = {
     "Chemistry": [
       {
         "chapter_title": "Synthetic Fibres and Plastics",
-        "table_id": "",
+        "table_id": "science_synthetic_plastics_8_quiz",
         "section": "Science"
       },
       {
