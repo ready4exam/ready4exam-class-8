@@ -163,7 +163,7 @@ export const curriculum = {
       },
       {
         "chapter_title": "Public Facilities",
-        "table_id": "",
+        "table_id": "social_public_facilities_8_quiz",
         "section": "Social Science"
       },
       {
