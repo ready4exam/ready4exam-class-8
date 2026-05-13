@@ -195,7 +195,7 @@ export const curriculum = {
       },
       {
         "chapter_title": "Industries",
-        "table_id": "",
+        "table_id": "social_industries_industries_8_quiz",
         "section": "Social Science"
       },
       {
