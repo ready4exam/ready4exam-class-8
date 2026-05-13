@@ -57,7 +57,7 @@ export const curriculum = {
     "Biology": [
       {
         "chapter_title": "Crop Production and Management",
-        "table_id": "",
+        "table_id": "science_crop_management_8_quiz",
         "section": "Science"
       },
       {
