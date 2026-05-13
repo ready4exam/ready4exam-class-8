@@ -62,7 +62,7 @@ export const curriculum = {
       },
       {
         "chapter_title": "Microorganisms: Friend and Foe",
-        "table_id": "",
+        "table_id": "science_microorganisms_foe_8_quiz",
         "section": "Science"
       },
       {
