@@ -190,7 +190,7 @@ export const curriculum = {
       },
       {
         "chapter_title": "Agriculture",
-        "table_id": "",
+        "table_id": "social_agriculture_agriculture_8_quiz",
         "section": "Social Science"
       },
       {
